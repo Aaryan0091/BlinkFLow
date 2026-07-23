@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" fill="none">
+  <defs>
+    <linearGradient id="background" x1="126" y1="80" x2="900" y2="944" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#123D35"/>
+      <stop offset="1" stop-color="#061713"/>
+    </linearGradient>
+    <linearGradient id="eye" x1="214" y1="356" x2="811" y2="675" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#D9FFF8"/>
+      <stop offset="0.55" stop-color="#A8F5E9"/>
+      <stop offset="1" stop-color="#55D8C0"/>
+    </linearGradient>
+    <filter id="glow" x="94" y="239" width="836" height="570" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="42"/>
+    </filter>
+  </defs>
+  <rect x="52" y="52" width="920" height="920" rx="224" fill="url(#background)"/>
+  <rect x="66" y="66" width="892" height="892" rx="210" stroke="#A8F5E9" stroke-opacity="0.13" stroke-width="8"/>
+  <path d="M162 512C250 369 370 296 512 296C654 296 774 369 862 512C774 655 654 728 512 728C370 728 250 655 162 512Z" fill="#A8F5E9" fill-opacity="0.2" filter="url(#glow)"/>
+  <path d="M162 512C250 369 370 296 512 296C654 296 774 369 862 512C774 655 654 728 512 728C370 728 250 655 162 512Z" fill="url(#eye)" stroke="#E8FFFA" stroke-width="18" stroke-linejoin="round"/>
+  <circle cx="512" cy="512" r="136" fill="#176F61"/>
+  <circle cx="512" cy="512" r="90" fill="#082720"/>
+  <circle cx="548" cy="470" r="30" fill="#D9FFF8"/>
+</svg>
