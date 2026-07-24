@@ -2,6 +2,11 @@
 
 A UI-first desktop reminder app built with React, Vite, TypeScript, and Electron.
 
+## Documentation
+
+- [Electron desktop stack](docs/electron-desktop-stack.md) — Electron, Electron
+  Builder, desktop features, media handling, IPC, and security
+
 ## What it does
 
 - Runs a `20 minute focus / adjustable break` cycle
@@ -14,7 +19,9 @@ A UI-first desktop reminder app built with React, Vite, TypeScript, and Electron
 - Plays a system sound when focus and rest periods end
 - Pauses supported background media players when a focus period ends
 - Shows a native desktop notification when focus time ends
-- Opens a priority full-screen break overlay above normal and full-screen windows
+- Opens a priority full-screen break overlay on every connected display
+- Bundles Lora and Raleway locally for fully offline typography
+- Sandboxes renderers and restricts CSP, IPC, navigation, and new windows
 - Keeps running from the system tray when the main window is closed
 - Lets you start, pause, resume, stop, reopen, or quit from the tray menu
 - Includes local `21st.dev` CLI scripts for UI exploration

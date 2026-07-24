@@ -37,11 +37,12 @@
 - **Heading Font:** Lora
 - **Body Font:** Raleway
 - **Mood:** calm, wellness, health, relaxing, natural, organic
-- **Google Fonts:** [Lora + Raleway](https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&family=Raleway:wght@300;400;500;600;700&display=swap)
+- **Font source:** Locally bundled Fontsource variable packages
 
 **CSS Import:**
 ```css
-@import url('https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&family=Raleway:wght@300;400;500;600;700&display=swap');
+@import '@fontsource-variable/lora/wght.css';
+@import '@fontsource-variable/raleway/wght.css';
 ```
 
 ### Spacing Variables

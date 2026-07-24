@@ -8,15 +8,23 @@ import {
   nativeImage,
   powerMonitor,
   screen,
+  session,
   shell,
+  type Display,
+  type IpcMainInvokeEvent,
+  type WebContents,
 } from 'electron'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import {
   registerTimerIpcHandlers,
   TIMER_IPC_CHANNELS,
 } from './ipc-handlers.js'
 import { pauseBackgroundMedia } from './media-controller.js'
+import {
+  buildContentSecurityPolicy,
+  createRendererUrlValidator,
+} from './security.js'
 import { TimerEngine, type TimerTransition } from './timer-engine.js'
 import {
   readTimerSnapshot,
@@ -27,20 +35,61 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const isDev = !app.isPackaged
 
 let mainWindow: BrowserWindow | null = null
-let breakWindow: BrowserWindow | null = null
+const breakWindows = new Map<number, BrowserWindow>()
 let tray: Tray | null = null
 let tickHandle: NodeJS.Timeout | null = null
 let quitRequested = false
 let timerEngine = new TimerEngine()
 let timerDataPath: string | null = null
+const devServerUrl = process.env.VITE_DEV_SERVER_URL ?? 'http://localhost:5173/'
+const rendererFileUrl = pathToFileURL(
+  path.join(__dirname, '../dist/index.html'),
+).toString()
+const isTrustedRendererUrl = createRendererUrlValidator({
+  isDev,
+  devServerUrl,
+  rendererFileUrl,
+})
 
 function getRendererUrl(mode: 'main' | 'break') {
-  const query = mode === 'break' ? '?mode=break' : ''
-  if (isDev) {
-    const devServerUrl = process.env.VITE_DEV_SERVER_URL ?? 'http://localhost:5173/'
-    return `${devServerUrl}${query}`
-  }
-  return `file://${path.join(__dirname, '../dist/index.html')}${query}`
+  const rendererUrl = new URL(isDev ? devServerUrl : rendererFileUrl)
+  if (mode === 'break') rendererUrl.searchParams.set('mode', 'break')
+  return rendererUrl.toString()
+}
+
+function secureWebContents(webContents: WebContents) {
+  webContents.on('will-navigate', (event, navigationUrl) => {
+    if (!isTrustedRendererUrl(navigationUrl)) {
+      event.preventDefault()
+    }
+  })
+  webContents.on('will-attach-webview', (event) => event.preventDefault())
+  webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+}
+
+function configureContentSecurityPolicy() {
+  const policy = buildContentSecurityPolicy(isDev)
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [policy],
+      },
+    })
+  })
+}
+
+function isTrustedIpcSender(event: IpcMainInvokeEvent) {
+  const trustedWebContentsIds = new Set([
+    mainWindow?.webContents.id,
+    ...[...breakWindows.values()].map((window) => window.webContents.id),
+  ])
+
+  return (
+    trustedWebContentsIds.has(event.sender.id) &&
+    event.senderFrame === event.sender.mainFrame &&
+    isTrustedRendererUrl(event.senderFrame.url)
+  )
 }
 
 function persistTimerState() {
@@ -55,7 +104,7 @@ function persistTimerState() {
 function sendState(shouldPersist = false) {
   const timerState = timerEngine.getState()
   if (shouldPersist) persistTimerState()
-  for (const target of [mainWindow, breakWindow]) {
+  for (const target of [mainWindow, ...breakWindows.values()]) {
     target?.webContents.send(TIMER_IPC_CHANNELS.stateChanged, timerState)
   }
   updateTrayMenu()
@@ -138,71 +187,119 @@ function clearTicker() {
   }
 }
 
-function setBreakWindowBounds() {
-  if (!breakWindow) {
-    return
+function configureBreakWindow(window: BrowserWindow, display: Display) {
+  window.setBounds(display.bounds)
+  window.setAlwaysOnTop(true, 'screen-saver', 1)
+  window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+}
+
+function getPriorityDisplayId() {
+  try {
+    return screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).id
+  } catch {
+    return screen.getPrimaryDisplay().id
+  }
+}
+
+function createBreakWindow(display: Display) {
+  const window = new BrowserWindow({
+    ...display.bounds,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    focusable: true,
+    fullscreenable: false,
+    hasShadow: false,
+    skipTaskbar: true,
+    resizable: false,
+    movable: false,
+    show: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.cjs'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+    },
+  })
+
+  breakWindows.set(display.id, window)
+  secureWebContents(window.webContents)
+  configureBreakWindow(window, display)
+
+  window.on('closed', () => {
+    if (breakWindows.get(display.id) === window) {
+      breakWindows.delete(display.id)
+    }
+  })
+
+  window.on('blur', () => {
+    if (!timerEngine.shouldShowBreak()) return
+
+    setTimeout(() => {
+      const focusedWindow = BrowserWindow.getFocusedWindow()
+      const overlayHasFocus =
+        focusedWindow && [...breakWindows.values()].includes(focusedWindow)
+      if (!overlayHasFocus) bringBreakWindowsForward()
+    }, 50)
+  })
+
+  void window.loadURL(getRendererUrl('break'))
+  return window
+}
+
+function syncBreakWindows() {
+  const displays = screen.getAllDisplays()
+  const connectedDisplayIds = new Set(displays.map((display) => display.id))
+
+  for (const [displayId, window] of breakWindows) {
+    if (!connectedDisplayIds.has(displayId)) {
+      window.destroy()
+      breakWindows.delete(displayId)
+    }
   }
 
-  breakWindow.setBounds(screen.getPrimaryDisplay().workArea)
-  breakWindow.setAlwaysOnTop(true, 'screen-saver', 1)
-  breakWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+  for (const display of displays) {
+    const window = breakWindows.get(display.id) ?? createBreakWindow(display)
+    configureBreakWindow(window, display)
+  }
 }
 
-function bringBreakWindowForward() {
-  if (!breakWindow || breakWindow.isDestroyed()) return
+function bringBreakWindowsForward() {
+  syncBreakWindows()
+  const priorityDisplayId = getPriorityDisplayId()
 
-  setBreakWindowBounds()
-  breakWindow.setAlwaysOnTop(true, 'screen-saver', 1)
-  breakWindow.moveTop()
-  breakWindow.show()
-  breakWindow.focus()
-}
-
-function showBreakWindow() {
-  if (!breakWindow) {
-    breakWindow = new BrowserWindow({
-      frame: false,
-      transparent: true,
-      alwaysOnTop: true,
-      focusable: true,
-      fullscreenable: false,
-      hasShadow: false,
-      skipTaskbar: true,
-      resizable: false,
-      movable: false,
-      show: false,
-      webPreferences: {
-        preload: path.join(__dirname, 'preload.js'),
-        contextIsolation: true,
-        sandbox: false,
-      },
-    })
-
-    breakWindow.on('closed', () => {
-      breakWindow = null
-    })
-
-    breakWindow.on('blur', () => {
-      if (timerEngine.shouldShowBreak()) {
-        setTimeout(bringBreakWindowForward, 50)
-      }
-    })
-
-    void breakWindow.loadURL(getRendererUrl('break'))
+  for (const [displayId, window] of breakWindows) {
+    if (window.isDestroyed()) continue
+    configureBreakWindow(
+      window,
+      screen.getAllDisplays().find((display) => display.id === displayId) ??
+        screen.getPrimaryDisplay(),
+    )
+    window.moveTop()
+    window.show()
   }
 
-  bringBreakWindowForward()
+  const priorityWindow =
+    breakWindows.get(priorityDisplayId) ??
+    breakWindows.get(screen.getPrimaryDisplay().id)
+  priorityWindow?.focus()
 }
 
-function hideBreakWindow() {
-  breakWindow?.hide()
+function showBreakWindows() {
+  bringBreakWindowsForward()
+}
+
+function hideBreakWindows() {
+  for (const window of breakWindows.values()) {
+    window.hide()
+  }
 }
 
 function notifyFocusEnded() {
   const timerState = timerEngine.getState()
   void pauseBackgroundMedia()
   shell.beep()
-  showBreakWindow()
+  showBreakWindows()
 
   if (Notification.isSupported()) {
     const breakSeconds = Math.round(timerState.breakDurationMs / 1000)
@@ -221,7 +318,7 @@ function handleTimerTransition(transition: TimerTransition) {
   }
 
   shell.beep()
-  hideBreakWindow()
+  hideBreakWindows()
 }
 
 function resumeTimerInterval() {
@@ -235,7 +332,7 @@ function resumeTimerInterval() {
 
 function startTimer() {
   const timerState = timerEngine.start()
-  hideBreakWindow()
+  hideBreakWindows()
   sendState(true)
   resumeTimerInterval()
   return timerState
@@ -268,8 +365,8 @@ function pauseTimer() {
 
 function resumeTimer() {
   const timerState = timerEngine.resume()
-  if (timerEngine.shouldShowBreak()) showBreakWindow()
-  else hideBreakWindow()
+  if (timerEngine.shouldShowBreak()) showBreakWindows()
+  else hideBreakWindows()
   if (timerState.isRunning && !timerState.isPaused) resumeTimerInterval()
   sendState(true)
   return timerState
@@ -277,7 +374,7 @@ function resumeTimer() {
 
 function stopTimer() {
   clearTicker()
-  hideBreakWindow()
+  hideBreakWindows()
   const timerState = timerEngine.stop()
   sendState(true)
   return timerState
@@ -285,7 +382,7 @@ function stopTimer() {
 
 function handleSystemWake() {
   clearTicker()
-  hideBreakWindow()
+  hideBreakWindows()
 
   const timerState = timerEngine.resetAfterWake()
   if (timerState.autoMode) {
@@ -304,11 +401,13 @@ function createMainWindow() {
     titleBarStyle: 'hiddenInset',
     backgroundColor: '#f0fdfa',
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
-      sandbox: false,
+      nodeIntegration: false,
+      sandbox: true,
     },
   })
+  secureWebContents(mainWindow.webContents)
 
   mainWindow.on('close', (event) => {
     if (!quitRequested) {
@@ -334,6 +433,7 @@ if (!hasSingleInstanceLock) {
   })
 
   app.whenReady().then(() => {
+    configureContentSecurityPolicy()
     timerDataPath = path.join(
       app.getPath('userData'),
       'eye-break-data',
@@ -345,7 +445,7 @@ if (!hasSingleInstanceLock) {
     createMainWindow()
     createTray()
 
-    if (timerEngine.shouldShowBreak()) showBreakWindow()
+    if (timerEngine.shouldShowBreak()) showBreakWindows()
     const restoredState = timerEngine.getState()
     if (restoredState.isRunning && !restoredState.isPaused) {
       resumeTimerInterval()
@@ -358,8 +458,18 @@ if (!hasSingleInstanceLock) {
       }
     })
 
+    screen.on('display-added', () => {
+      if (timerEngine.shouldShowBreak()) showBreakWindows()
+    })
+
+    screen.on('display-removed', (_event, display) => {
+      breakWindows.get(display.id)?.destroy()
+      breakWindows.delete(display.id)
+      if (timerEngine.shouldShowBreak()) showBreakWindows()
+    })
+
     screen.on('display-metrics-changed', () => {
-      setBreakWindowBounds()
+      if (timerEngine.shouldShowBreak()) showBreakWindows()
     })
 
     powerMonitor.on('suspend', () => {
@@ -375,14 +485,18 @@ if (!hasSingleInstanceLock) {
     persistTimerState()
   })
 
-  registerTimerIpcHandlers(ipcMain, {
-    getState: () => timerEngine.getState(),
-    start: startTimer,
-    pause: pauseTimer,
-    resume: resumeTimer,
-    stop: stopTimer,
-    setRemaining: setRemainingTime,
-    setBreakDuration,
-    setAutoMode,
-  })
+  registerTimerIpcHandlers(
+    ipcMain,
+    {
+      getState: () => timerEngine.getState(),
+      start: startTimer,
+      pause: pauseTimer,
+      resume: resumeTimer,
+      stop: stopTimer,
+      setRemaining: setRemainingTime,
+      setBreakDuration,
+      setAutoMode,
+    },
+    { isTrustedSender: isTrustedIpcSender },
+  )
 }
