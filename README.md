@@ -10,9 +10,11 @@ A UI-first desktop reminder app built with React, Vite, TypeScript, and Electron
 - Uses an eye-shaped timer that becomes visibly strained as focus time passes
 - Supports an optional Auto Mode for repeating focus and rest cycles
 - Restores the active, paused, or automatically repeating timer after an app restart
+- Resets cleanly after laptop sleep: Auto Mode begins a fresh cycle, while manual mode waits for Start
 - Plays a system sound when focus and rest periods end
+- Pauses supported background media players when a focus period ends
 - Shows a native desktop notification when focus time ends
-- Opens a full-screen break overlay so the reminder is hard to ignore
+- Opens a priority full-screen break overlay above normal and full-screen windows
 - Keeps running from the system tray when the main window is closed
 - Lets you start, pause, resume, stop, reopen, or quit from the tray menu
 - Includes local `21st.dev` CLI scripts for UI exploration
@@ -64,6 +66,11 @@ Running timers account for time that passes while the app is closed. Paused
 timers remain paused, and Auto Mode advances through any completed focus and
 break periods when the app starts again. Invalid or corrupted snapshots are
 ignored safely and replaced by the default timer state.
+
+Laptop sleep is handled separately from quitting the app. When the computer
+wakes, the previous countdown is discarded because sleep time is not screen
+time. With Auto Mode enabled, a new full focus cycle starts immediately. With
+Auto Mode disabled, the timer resets to Ready and waits for the user to start.
 
 Run the automated timer, Auto Mode, persistence, and Electron IPC tests once:
 

@@ -562,4 +562,17 @@ export class TimerEngine {
     this.state.autoMode = Boolean(enabled)
     return this.state
   }
+
+  resetAfterWake() {
+    const completedFocusSessions = this.state.completedFocusSessions
+
+    this.stop()
+    this.state.completedFocusSessions = completedFocusSessions
+
+    if (this.state.autoMode) {
+      this.enterFocusPhase(true, this.state.focusDurationMs)
+    }
+
+    return this.state
+  }
 }

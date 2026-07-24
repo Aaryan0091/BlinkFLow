@@ -6,6 +6,7 @@ import {
   Tray,
   ipcMain,
   nativeImage,
+  powerMonitor,
   screen,
   shell,
 } from 'electron'
@@ -15,6 +16,7 @@ import {
   registerTimerIpcHandlers,
   TIMER_IPC_CHANNELS,
 } from './ipc-handlers.js'
+import { pauseBackgroundMedia } from './media-controller.js'
 import { TimerEngine, type TimerTransition } from './timer-engine.js'
 import {
   readTimerSnapshot,
@@ -142,8 +144,18 @@ function setBreakWindowBounds() {
   }
 
   breakWindow.setBounds(screen.getPrimaryDisplay().workArea)
-  breakWindow.setAlwaysOnTop(true, 'screen-saver')
+  breakWindow.setAlwaysOnTop(true, 'screen-saver', 1)
   breakWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+}
+
+function bringBreakWindowForward() {
+  if (!breakWindow || breakWindow.isDestroyed()) return
+
+  setBreakWindowBounds()
+  breakWindow.setAlwaysOnTop(true, 'screen-saver', 1)
+  breakWindow.moveTop()
+  breakWindow.show()
+  breakWindow.focus()
 }
 
 function showBreakWindow() {
@@ -151,6 +163,10 @@ function showBreakWindow() {
     breakWindow = new BrowserWindow({
       frame: false,
       transparent: true,
+      alwaysOnTop: true,
+      focusable: true,
+      fullscreenable: false,
+      hasShadow: false,
       skipTaskbar: true,
       resizable: false,
       movable: false,
@@ -166,12 +182,16 @@ function showBreakWindow() {
       breakWindow = null
     })
 
+    breakWindow.on('blur', () => {
+      if (timerEngine.shouldShowBreak()) {
+        setTimeout(bringBreakWindowForward, 50)
+      }
+    })
+
     void breakWindow.loadURL(getRendererUrl('break'))
   }
 
-  setBreakWindowBounds()
-  breakWindow.show()
-  breakWindow.focus()
+  bringBreakWindowForward()
 }
 
 function hideBreakWindow() {
@@ -180,6 +200,7 @@ function hideBreakWindow() {
 
 function notifyFocusEnded() {
   const timerState = timerEngine.getState()
+  void pauseBackgroundMedia()
   shell.beep()
   showBreakWindow()
 
@@ -262,6 +283,18 @@ function stopTimer() {
   return timerState
 }
 
+function handleSystemWake() {
+  clearTicker()
+  hideBreakWindow()
+
+  const timerState = timerEngine.resetAfterWake()
+  if (timerState.autoMode) {
+    resumeTimerInterval()
+  }
+
+  sendState(true)
+}
+
 function createMainWindow() {
   mainWindow = new BrowserWindow({
     width: 1440,
@@ -328,6 +361,13 @@ if (!hasSingleInstanceLock) {
     screen.on('display-metrics-changed', () => {
       setBreakWindowBounds()
     })
+
+    powerMonitor.on('suspend', () => {
+      clearTicker()
+      persistTimerState()
+    })
+
+    powerMonitor.on('resume', handleSystemWake)
   })
 
   app.on('before-quit', () => {

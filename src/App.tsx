@@ -76,24 +76,24 @@ const browserFallback = {
 
 const phaseCopy: Record<TimerPhase, { eyebrow: string; title: string; description: string }> = {
   idle: {
-    eyebrow: 'Ready to begin',
-    title: 'Your next eye break',
-    description: 'Start whenever you settle into work or a game. We will keep the clock.',
+    eyebrow: 'Standing by',
+    title: 'Protect the next twenty.',
+    description: 'Start when your screen session begins. The rest of the ritual stays out of your way.',
   },
   focus: {
-    eyebrow: 'Focus in progress',
-    title: 'Until your eye break',
-    description: 'Stay in flow. Eye Break is quietly running above everything else.',
+    eyebrow: 'Focus window',
+    title: 'Time until release.',
+    description: 'Keep your attention where it belongs. Eye Break is running quietly in the tray.',
   },
   break: {
-    eyebrow: 'Break in progress',
-    title: 'Keep looking away',
-    description: 'Relax your focus on something distant until the countdown finishes.',
+    eyebrow: 'Distance reset',
+    title: 'Look beyond the screen.',
+    description: 'Let your gaze settle on something far away until the reset is complete.',
   },
   paused: {
-    eyebrow: 'Cycle paused',
-    title: 'Your time is held',
-    description: 'Resume when you are ready. Nothing will count down while paused.',
+    eyebrow: 'Timer held',
+    title: 'Your place is saved.',
+    description: 'Resume when you return. No focus time is consumed while the timer is paused.',
   },
 }
 
@@ -293,7 +293,7 @@ function App() {
           <span className="brand-mark" aria-hidden="true"><Eye size={21} /></span>
           <div>
             <strong>Eye Break</strong>
-            <span>20 · 20 · 20 ritual</span>
+            <span>Ocular reset protocol</span>
           </div>
         </div>
 
@@ -331,7 +331,10 @@ function App() {
               <p className="kicker">{phaseCopy[activePhase].eyebrow}</p>
               <h1>{phaseCopy[activePhase].title}</h1>
             </div>
-            <span className="cycle-chip">Cycle {timer.completedFocusSessions + 1}</span>
+            <span className="cycle-chip">
+              <small>Cycle</small>
+              {String(timer.completedFocusSessions + 1).padStart(2, '0')}
+            </span>
           </div>
 
           <div
@@ -343,25 +346,41 @@ function App() {
             aria-valuenow={progressPercent}
           >
             <svg
-              viewBox="0 0 640 320"
+              viewBox="0 0 720 340"
               className={`eye-timer-visual ${eyeState}`}
               aria-hidden="true"
             >
               <defs>
                 <linearGradient id="eyeProgressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
                   <stop offset="0%" stopColor="#a8f5e9" />
-                  <stop offset="55%" stopColor="#4fe1ca" />
-                  <stop offset="100%" stopColor={eyeState === 'strained' ? '#f0a07f' : '#14a38f'} />
+                  <stop offset="62%" stopColor="#55d8c1" />
+                  <stop offset="100%" stopColor={eyeState === 'strained' ? '#e79076' : '#1b9a84'} />
                 </linearGradient>
-                <radialGradient id="irisGradient" cx="38%" cy="32%" r="68%">
-                  <stop offset="0%" stopColor="#d9fff8" />
-                  <stop offset="38%" stopColor="#73dcc9" />
-                  <stop offset="100%" stopColor="#176f61" />
+                <linearGradient id="scleraGradient" x1="15%" y1="8%" x2="82%" y2="88%">
+                  <stop offset="0%" stopColor="#effffb" stopOpacity="0.17" />
+                  <stop offset="52%" stopColor="#b8ddd5" stopOpacity="0.1" />
+                  <stop offset="100%" stopColor="#6faaa0" stopOpacity="0.06" />
+                </linearGradient>
+                <radialGradient id="irisGradient" cx="40%" cy="34%" r="64%">
+                  <stop offset="0%" stopColor="#e5fff9" />
+                  <stop offset="28%" stopColor="#9be9da" />
+                  <stop offset="61%" stopColor="#379f8d" />
+                  <stop offset="100%" stopColor="#0c4c41" />
                 </radialGradient>
-                <filter id="eyeGlow" x="-40%" y="-40%" width="180%" height="180%">
-                  <feGaussianBlur stdDeviation="4" result="blur" />
+                <radialGradient id="pupilGradient" cx="42%" cy="38%" r="64%">
+                  <stop offset="0%" stopColor="#123e35" />
+                  <stop offset="100%" stopColor="#03110e" />
+                </radialGradient>
+                <filter id="eyeGlow" x="-30%" y="-50%" width="160%" height="200%">
+                  <feGaussianBlur stdDeviation="3.5" result="blur" />
                   <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
                 </filter>
+                <filter id="irisDepth" x="-45%" y="-45%" width="190%" height="190%">
+                  <feDropShadow dx="0" dy="10" stdDeviation="12" floodColor="#001b16" floodOpacity="0.55" />
+                </filter>
+                <clipPath id="eyeClip">
+                  <path d="M 64 170 C 176 24 544 24 656 170 C 544 316 176 316 64 170 Z" />
+                </clipPath>
               </defs>
 
               <g
@@ -369,66 +388,106 @@ function App() {
                 style={{ transform: `scaleY(${eyeOpenness})` }}
               >
                 <path
-                  className="eye-surface"
-                  d="M 82 160 Q 320 32 558 160 Q 320 288 82 160 Z"
+                  className="eye-shadow"
+                  d="M 64 170 C 176 24 544 24 656 170 C 544 316 176 316 64 170 Z"
                 />
+                <path
+                  className="eye-surface"
+                  d="M 64 170 C 176 24 544 24 656 170 C 544 316 176 316 64 170 Z"
+                />
+                <g clipPath="url(#eyeClip)">
+                  <path
+                    className="eye-surface-wash"
+                    d="M 52 170 C 180 34 540 34 668 170 C 540 306 180 306 52 170 Z"
+                  />
+                  <path className="eye-upper-plane" d="M 55 168 C 185 43 535 43 665 168 C 532 105 188 105 55 168 Z" />
+                  <path className="eye-lower-plane" d="M 55 172 C 185 297 535 297 665 172 C 528 229 192 229 55 172 Z" />
+
+                  <g className="eye-veins" style={{ opacity: strainVisibility }}>
+                    <path d="M 70 165 C 132 142 174 151 226 166" />
+                    <path d="M 82 194 C 145 214 183 192 234 177" />
+                    <path d="M 650 163 C 590 143 546 151 494 166" />
+                    <path d="M 638 195 C 578 214 535 191 486 177" />
+                    <path d="M 139 100 C 192 126 219 143 254 154" />
+                    <path d="M 581 100 C 528 126 499 143 466 154" />
+                    <path d="M 153 239 C 198 215 224 198 259 186" />
+                    <path d="M 567 239 C 522 215 495 198 461 186" />
+                  </g>
+                </g>
                 <path
                   className="eye-outline-track"
-                  d="M 82 160 Q 320 32 558 160 Q 320 288 82 160 Z"
+                  d="M 64 170 C 176 24 544 24 656 170 C 544 316 176 316 64 170 Z"
                 />
                 <path
                   className="eye-progress-line"
                   pathLength="100"
-                  d="M 82 160 Q 320 32 558 160"
+                  d="M 64 170 C 176 24 544 24 656 170"
                   style={{ strokeDashoffset: eyeProgressOffset }}
                 />
                 <path
                   className="eye-progress-line"
                   pathLength="100"
-                  d="M 82 160 Q 320 288 558 160"
+                  d="M 64 170 C 176 316 544 316 656 170"
                   style={{ strokeDashoffset: eyeProgressOffset }}
                 />
+                <path className="eyelid-detail upper" d="M 95 138 C 218 16 502 16 625 138" />
+                <path className="eyelid-detail lower" d="M 101 205 C 224 309 496 309 619 205" />
 
-                <g className="eye-veins" style={{ opacity: strainVisibility }}>
-                  <path d="M 108 145 Q 165 132 220 153" />
-                  <path d="M 113 172 Q 170 187 226 164" />
-                  <path d="M 532 144 Q 475 132 420 153" />
-                  <path d="M 527 174 Q 470 188 414 164" />
-                  <path d="M 171 91 Q 208 118 241 131" />
-                  <path d="M 469 91 Q 430 119 399 131" />
+                <g className="iris-assembly" filter="url(#irisDepth)">
+                  <circle className="eye-iris-halo" cx="360" cy="170" r="98" />
+                  <circle className="eye-iris" cx="360" cy="170" r="78" />
+                  <g className="eye-iris-rays">
+                    <path d="M 403 170 L 428 170" />
+                    <path d="M 398 192 L 420 204" />
+                    <path d="M 382 208 L 395 231" />
+                    <path d="M 360 213 L 360 239" />
+                    <path d="M 338 208 L 325 231" />
+                    <path d="M 322 192 L 300 204" />
+                    <path d="M 317 170 L 292 170" />
+                    <path d="M 322 148 L 300 136" />
+                    <path d="M 338 132 L 325 109" />
+                    <path d="M 360 127 L 360 101" />
+                    <path d="M 382 132 L 395 109" />
+                    <path d="M 398 148 L 420 136" />
+                  </g>
+                  <circle className="eye-iris-ring" cx="360" cy="170" r="42" />
+                  <circle className="eye-pupil" cx="360" cy="170" r="35" />
+                  <ellipse className="eye-catchlight primary" cx="338" cy="145" rx="10" ry="13" />
+                  <circle className="eye-catchlight secondary" cx="379" cy="188" r="4" />
+                  <path className="eye-reflection" d="M 323 203 C 344 217 377 219 399 200" />
                 </g>
-
-                <ellipse className="eye-iris-halo" cx="320" cy="160" rx="86" ry="86" />
-                <ellipse className="eye-iris" cx="320" cy="160" rx="66" ry="66" />
-                <circle className="eye-pupil" cx="320" cy="160" r="31" />
-                <circle className="eye-catchlight" cx="302" cy="141" r="9" />
               </g>
 
               <g className="strain-marks" style={{ opacity: strainVisibility }}>
-                <path d="M 194 46 L 176 22" />
-                <path d="M 239 32 L 232 8" />
-                <path d="M 446 46 L 464 22" />
-                <path d="M 401 32 L 408 8" />
+                <path d="M 197 46 L 178 21" />
+                <path d="M 257 27 L 250 4" />
+                <path d="M 523 46 L 542 21" />
+                <path d="M 463 27 L 470 4" />
               </g>
             </svg>
 
             <div className="eye-time-marker spent" aria-hidden="true">
-              <small>Spent</small>
+              <small>Elapsed</small>
               <strong>{formatClock(elapsedMs)}</strong>
             </div>
             <div className="eye-time-marker remaining" aria-hidden="true">
-              <small>Left</small>
+              <small>Remaining</small>
               <strong>{formatClock(timer.remainingMs)}</strong>
             </div>
 
             <div className="timer-face eye-timer-face" aria-live="polite" aria-atomic="true">
               <span>{timer.phase === 'break' ? 'Break' : isPaused ? 'Paused' : 'Focus'}</span>
               <strong>{formatClock(timer.remainingMs)}</strong>
-              <small>{eyeStatus}</small>
             </div>
           </div>
 
-          <p className="timer-description">{phaseCopy[activePhase].description}</p>
+          <div className="timer-description">
+            <span className={`eye-condition ${eyeState}`}>
+              <i aria-hidden="true" />
+              {eyeStatus}
+            </span>
+            <p>{phaseCopy[activePhase].description}</p>
+          </div>
 
           <div className="time-scrubber">
             <div className="scrubber-heading">
@@ -500,13 +559,13 @@ function App() {
           >
             <div className="section-title-row">
               <div>
-                <p className="kicker">Today’s rhythm</p>
+                <p className="kicker">Current protocol</p>
                 <h2>Next break</h2>
               </div>
               <BellRing size={20} aria-hidden="true" />
             </div>
             <strong className="next-time">{nextBreak}</strong>
-            <p className="muted-copy">You will get a native notification and a calm screen overlay.</p>
+            <p className="muted-copy">A native alert and full-screen reset will meet you wherever you are working.</p>
 
             <div className="ritual-timeline">
               <RitualStep icon={Laptop} title="Focus" meta="20 minutes" state={timer.phase === 'focus' ? 'active' : timer.completedFocusSessions > 0 ? 'done' : 'upcoming'} />
@@ -531,8 +590,8 @@ function App() {
               <span /><Eye size={32} />
             </div>
             <div>
-              <p className="kicker">The reset cue</p>
-              <h2>Find something 20 feet away.</h2>
+              <p className="kicker">The distance cue</p>
+              <h2>Find a point beyond the room.</h2>
               <p className="muted-copy">Soften your gaze, blink naturally, and let the screen disappear for a moment.</p>
             </div>
             <div className="rest-setting">

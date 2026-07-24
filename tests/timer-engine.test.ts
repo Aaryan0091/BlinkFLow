@@ -112,6 +112,51 @@ describe('TimerEngine', () => {
     expect(engine.setBreakDuration(1000).breakDurationMs).toBe(5000)
     expect(engine.setBreakDuration(999_000).breakDurationMs).toBe(120_000)
   })
+
+  it('resets to ready after wake when Auto Mode is off', () => {
+    let now = 1000
+    const engine = new TimerEngine({ now: () => now })
+    engine.setRemaining(5000)
+    engine.start()
+    now += 3000
+    engine.tick()
+
+    const state = engine.resetAfterWake()
+
+    expect(state.phase).toBe('idle')
+    expect(state.isRunning).toBe(false)
+    expect(state.remainingMs).toBe(state.focusDurationMs)
+    expect(state.elapsedFocusMs).toBe(0)
+  })
+
+  it('starts a fresh focus cycle after wake when Auto Mode is on', () => {
+    let now = 1000
+    const engine = new TimerEngine({ now: () => now })
+    engine.setAutoMode(true)
+    engine.start()
+    now += 10 * 60 * 1000
+    engine.tick()
+
+    const state = engine.resetAfterWake()
+
+    expect(state.phase).toBe('focus')
+    expect(state.isRunning).toBe(true)
+    expect(state.isPaused).toBe(false)
+    expect(state.remainingMs).toBe(state.focusDurationMs)
+    expect(state.startedAt).toBe(now)
+  })
+
+  it('preserves completed session count when resetting after wake', () => {
+    let now = 1000
+    const engine = new TimerEngine({ now: () => now })
+    engine.setAutoMode(true)
+    engine.setRemaining(1000)
+    engine.start()
+    now += 1000
+    engine.tick()
+
+    expect(engine.resetAfterWake().completedFocusSessions).toBe(1)
+  })
 })
 
 describe('timer snapshot restoration', () => {

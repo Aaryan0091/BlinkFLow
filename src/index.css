@@ -3,13 +3,18 @@
 :root {
   --color-primary: #50ddc3;
   --color-secondary: #159f8b;
-  --color-accent: #e4ba7b;
-  --color-background: #071815;
-  --color-text: #dbeee9;
-  --color-text-strong: #f2fffc;
-  --color-muted-text: #78958e;
-  --color-deep: #092720;
+  --color-accent: #d8b477;
+  --color-background: #06110f;
+  --color-text: #d7e7e3;
+  --color-text-strong: #f2faf7;
+  --color-muted-text: #829b94;
+  --color-deep: #071c17;
   --color-highlight: #a8f5e9;
+  --surface-primary: #0a1c18;
+  --surface-secondary: #091713;
+  --line-subtle: rgba(168, 245, 233, 0.12);
+  --line-strong: rgba(168, 245, 233, 0.22);
+  --ease-out-quart: cubic-bezier(0.22, 1, 0.36, 1);
   --font-display: 'Lora', serif;
   --font-body: 'Raleway', sans-serif;
   font-family: var(--font-body);
