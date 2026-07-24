@@ -9,6 +9,7 @@ A UI-first desktop reminder app built with React, Vite, TypeScript, and Electron
 - Includes a draggable timeline for changing how much time has passed or remains
 - Uses an eye-shaped timer that becomes visibly strained as focus time passes
 - Supports an optional Auto Mode for repeating focus and rest cycles
+- Restores the active, paused, or automatically repeating timer after an app restart
 - Plays a system sound when focus and rest periods end
 - Shows a native desktop notification when focus time ends
 - Opens a full-screen break overlay so the reminder is hard to ignore
@@ -49,6 +50,32 @@ create an AppImage when the same command is run on those operating systems.
 
 Release builds are unsigned by default. Public macOS and Windows distribution
 should add code signing before publishing.
+
+## Timer data and tests
+
+The desktop app saves a timestamped timer snapshot under Electron's per-user
+application data directory:
+
+```text
+<userData>/eye-break-data/timer-state.json
+```
+
+Running timers account for time that passes while the app is closed. Paused
+timers remain paused, and Auto Mode advances through any completed focus and
+break periods when the app starts again. Invalid or corrupted snapshots are
+ignored safely and replaced by the default timer state.
+
+Run the automated timer, Auto Mode, persistence, and Electron IPC tests once:
+
+```bash
+npm test
+```
+
+Or keep them running while developing:
+
+```bash
+npm run test:watch
+```
 
 ## 21st.dev CLI
 
