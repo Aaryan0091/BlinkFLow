@@ -11,12 +11,25 @@ type TimerState = {
   remainingMs: number
   elapsedFocusMs: number
   completedFocusSessions: number
+  totalScreenTimeMs: number
+  totalEyeRestTimeMs: number
   startedAt: number | null
   breakStartedAt: number | null
   autoMode: boolean
 }
 
 type Unsubscribe = () => void
+
+type LaunchAtLoginState = {
+  supported: boolean
+  enabled: boolean
+  status:
+    | 'enabled'
+    | 'disabled'
+    | 'requires-approval'
+    | 'available-after-install'
+    | 'unsupported'
+}
 
 declare global {
   interface Window {
@@ -26,9 +39,12 @@ declare global {
       pause: () => Promise<TimerState>
       resume: () => Promise<TimerState>
       stop: () => Promise<TimerState>
+      restNow: () => Promise<TimerState>
       setRemaining: (remainingMs: number) => Promise<TimerState>
       setBreakDuration: (durationMs: number) => Promise<TimerState>
       setAutoMode: (enabled: boolean) => Promise<TimerState>
+      getLaunchAtLogin: () => Promise<LaunchAtLoginState>
+      setLaunchAtLogin: (enabled: boolean) => Promise<LaunchAtLoginState>
       onStateChange: (callback: (state: TimerState) => void) => Promise<Unsubscribe>
     }
   }

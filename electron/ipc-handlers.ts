@@ -8,10 +8,27 @@ export const TIMER_IPC_CHANNELS = {
   pause: 'timer:pause',
   resume: 'timer:resume',
   stop: 'timer:stop',
+  restNow: 'timer:rest-now',
   setRemaining: 'timer:set-remaining',
   setBreakDuration: 'timer:set-break-duration',
   setAutoMode: 'timer:set-auto-mode',
 } as const
+
+export const APP_IPC_CHANNELS = {
+  getLaunchAtLogin: 'app:get-launch-at-login',
+  setLaunchAtLogin: 'app:set-launch-at-login',
+} as const
+
+export type LaunchAtLoginState = {
+  supported: boolean
+  enabled: boolean
+  status:
+    | 'enabled'
+    | 'disabled'
+    | 'requires-approval'
+    | 'available-after-install'
+    | 'unsupported'
+}
 
 export type TimerIpcActions = {
   getState: () => TimerState
@@ -19,9 +36,15 @@ export type TimerIpcActions = {
   pause: () => TimerState
   resume: () => TimerState
   stop: () => TimerState
+  restNow: () => TimerState
   setRemaining: (remainingMs: number) => TimerState
   setBreakDuration: (durationMs: number) => TimerState
   setAutoMode: (enabled: boolean) => TimerState
+}
+
+export type AppIpcActions = {
+  getLaunchAtLogin: () => LaunchAtLoginState
+  setLaunchAtLogin: (enabled: boolean) => LaunchAtLoginState
 }
 
 export type TimerIpcSecurity = {
@@ -98,6 +121,10 @@ export function registerTimerIpcHandlers(
     assertTrustedSender(event, security)
     return actions.stop()
   })
+  ipc.handle(TIMER_IPC_CHANNELS.restNow, (event) => {
+    assertTrustedSender(event, security)
+    return actions.restNow()
+  })
   ipc.handle(
     TIMER_IPC_CHANNELS.setRemaining,
     (event, remainingMs: unknown) => {
@@ -117,6 +144,24 @@ export function registerTimerIpcHandlers(
     (event, enabled: unknown) => {
       assertTrustedSender(event, security)
       return actions.setAutoMode(validateBoolean(enabled, 'enabled'))
+    },
+  )
+}
+
+export function registerAppIpcHandlers(
+  ipc: Pick<IpcMain, 'handle'>,
+  actions: AppIpcActions,
+  security: TimerIpcSecurity,
+) {
+  ipc.handle(APP_IPC_CHANNELS.getLaunchAtLogin, (event) => {
+    assertTrustedSender(event, security)
+    return actions.getLaunchAtLogin()
+  })
+  ipc.handle(
+    APP_IPC_CHANNELS.setLaunchAtLogin,
+    (event, enabled: unknown) => {
+      assertTrustedSender(event, security)
+      return actions.setLaunchAtLogin(validateBoolean(enabled, 'enabled'))
     },
   )
 }

@@ -42,7 +42,12 @@ describe('timer persistence', () => {
     expect(loaded).not.toBeNull()
     expect(loaded?.state.phase).toBe('focus')
     expect(loaded?.state.autoMode).toBe(true)
+    expect(loaded?.state.totalScreenTimeMs).toBe(60 * 1000)
+    expect(loaded?.state.totalEyeRestTimeMs).toBe(0)
     expect(loaded?.phaseStartedAt).toBe(-895_000)
+
+    const restoredEngine = new TimerEngine({ now: () => now, snapshot: loaded })
+    expect(restoredEngine.getState().totalScreenTimeMs).toBe(60 * 1000)
   })
 
   it('returns null for a corrupted snapshot instead of crashing', () => {

@@ -53,6 +53,30 @@ describe('TimerEngine', () => {
     expect(engine.getState().completedFocusSessions).toBe(1)
   })
 
+  it('allows an immediate rest transition when remaining time is set to zero', () => {
+    const engine = new TimerEngine({ now: () => 1000 })
+    engine.start()
+
+    expect(engine.setRemaining(0).remainingMs).toBe(0)
+    expect(engine.tick()).toBe('focus-ended')
+    expect(engine.getState().phase).toBe('break')
+  })
+
+  it('starts a break immediately from active or paused focus', () => {
+    const activeEngine = new TimerEngine({ now: () => 1000 })
+    activeEngine.start()
+
+    expect(activeEngine.restNow().phase).toBe('break')
+    expect(activeEngine.getState().completedFocusSessions).toBe(1)
+
+    const pausedEngine = new TimerEngine({ now: () => 1000 })
+    pausedEngine.start()
+    pausedEngine.pause()
+
+    expect(pausedEngine.restNow().phase).toBe('break')
+    expect(pausedEngine.getState().isPaused).toBe(false)
+  })
+
   it('stops after the break when Auto Mode is off', () => {
     let now = 1000
     const engine = new TimerEngine({ now: () => now })
@@ -103,6 +127,28 @@ describe('TimerEngine', () => {
     now += 5000
     expect(engine.tick()).toBeNull()
     expect(engine.getState().remainingMs).toBe(1000)
+  })
+
+  it('tracks active screen and eye-rest time without counting paused time', () => {
+    let now = 1000
+    const engine = new TimerEngine({ now: () => now })
+    engine.setRemaining(10_000)
+    engine.start()
+
+    now += 4000
+    engine.tick()
+    expect(engine.getState().totalScreenTimeMs).toBe(4000)
+
+    engine.pause()
+    now += 60_000
+    engine.resume()
+    now += 2000
+    engine.restNow()
+    expect(engine.getState().totalScreenTimeMs).toBe(6000)
+
+    now += 5000
+    engine.tick()
+    expect(engine.getState().totalEyeRestTimeMs).toBe(5000)
   })
 
   it('clamps rest duration to supported five-second steps', () => {
@@ -156,6 +202,20 @@ describe('TimerEngine', () => {
     engine.tick()
 
     expect(engine.resetAfterWake().completedFocusSessions).toBe(1)
+  })
+
+  it('does not add suspended time to lifetime totals after wake', () => {
+    let now = 1000
+    const engine = new TimerEngine({ now: () => now })
+    engine.start()
+    now += 3000
+    engine.tick()
+
+    now += 8 * 60 * 60 * 1000
+    const state = engine.resetAfterWake()
+
+    expect(state.totalScreenTimeMs).toBe(3000)
+    expect(state.totalEyeRestTimeMs).toBe(0)
   })
 })
 

@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import { TIMER_IPC_CHANNELS } from './ipc-handlers.js'
+import { APP_IPC_CHANNELS, TIMER_IPC_CHANNELS } from './ipc-handlers.js'
 
 const api = {
   getState: () => ipcRenderer.invoke(TIMER_IPC_CHANNELS.getState),
@@ -7,12 +7,17 @@ const api = {
   pause: () => ipcRenderer.invoke(TIMER_IPC_CHANNELS.pause),
   resume: () => ipcRenderer.invoke(TIMER_IPC_CHANNELS.resume),
   stop: () => ipcRenderer.invoke(TIMER_IPC_CHANNELS.stop),
+  restNow: () => ipcRenderer.invoke(TIMER_IPC_CHANNELS.restNow),
   setRemaining: (remainingMs: number) =>
     ipcRenderer.invoke(TIMER_IPC_CHANNELS.setRemaining, remainingMs),
   setBreakDuration: (durationMs: number) =>
     ipcRenderer.invoke(TIMER_IPC_CHANNELS.setBreakDuration, durationMs),
   setAutoMode: (enabled: boolean) =>
     ipcRenderer.invoke(TIMER_IPC_CHANNELS.setAutoMode, enabled),
+  getLaunchAtLogin: () =>
+    ipcRenderer.invoke(APP_IPC_CHANNELS.getLaunchAtLogin),
+  setLaunchAtLogin: (enabled: boolean) =>
+    ipcRenderer.invoke(APP_IPC_CHANNELS.setLaunchAtLogin, enabled),
   onStateChange: async (callback: (state: unknown) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, state: unknown) =>
       callback(state)

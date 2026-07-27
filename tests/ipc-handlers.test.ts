@@ -1,8 +1,11 @@
 import type { IpcMain, IpcMainInvokeEvent } from 'electron'
 import { describe, expect, it, vi } from 'vitest'
 import {
+  APP_IPC_CHANNELS,
+  registerAppIpcHandlers,
   registerTimerIpcHandlers,
   TIMER_IPC_CHANNELS,
+  type AppIpcActions,
   type TimerIpcActions,
   type TimerIpcSecurity,
 } from '../electron/ipc-handlers.js'
@@ -30,6 +33,7 @@ function createHarness(isTrusted = true) {
     pause: vi.fn(() => state),
     resume: vi.fn(() => state),
     stop: vi.fn(() => state),
+    restNow: vi.fn(() => state),
     setRemaining: vi.fn(() => state),
     setBreakDuration: vi.fn(() => state),
     setAutoMode: vi.fn(() => state),
@@ -46,12 +50,13 @@ describe('timer IPC handlers', () => {
   it('registers every request channel and forwards values to timer actions', () => {
     const { handlers, actions, security, state } = createHarness()
 
-    expect(handlers.size).toBe(8)
+    expect(handlers.size).toBe(9)
     expect(handlers.get(TIMER_IPC_CHANNELS.getState)?.(trustedEvent)).toBe(state)
     expect(handlers.get(TIMER_IPC_CHANNELS.start)?.(trustedEvent)).toBe(state)
     expect(handlers.get(TIMER_IPC_CHANNELS.pause)?.(trustedEvent)).toBe(state)
     expect(handlers.get(TIMER_IPC_CHANNELS.resume)?.(trustedEvent)).toBe(state)
     expect(handlers.get(TIMER_IPC_CHANNELS.stop)?.(trustedEvent)).toBe(state)
+    expect(handlers.get(TIMER_IPC_CHANNELS.restNow)?.(trustedEvent)).toBe(state)
 
     handlers.get(TIMER_IPC_CHANNELS.setRemaining)?.(trustedEvent, 42_000)
     handlers
@@ -62,7 +67,8 @@ describe('timer IPC handlers', () => {
     expect(actions.setRemaining).toHaveBeenCalledWith(42_000)
     expect(actions.setBreakDuration).toHaveBeenCalledWith(35_000)
     expect(actions.setAutoMode).toHaveBeenCalledWith(true)
-    expect(security.isTrustedSender).toHaveBeenCalledTimes(8)
+    expect(actions.restNow).toHaveBeenCalledOnce()
+    expect(security.isTrustedSender).toHaveBeenCalledTimes(9)
   })
 
   it('blocks every request from an untrusted renderer', () => {
@@ -110,5 +116,66 @@ describe('timer IPC handlers', () => {
         (channel) => channel === TIMER_IPC_CHANNELS.stateChanged,
       ),
     ).toHaveLength(1)
+  })
+})
+
+describe('application preference IPC handlers', () => {
+  function createAppHarness(isTrusted = true) {
+    const handlers = new Map<string, RegisteredHandler>()
+    const ipc = {
+      handle: vi.fn((channel: string, handler: RegisteredHandler) => {
+        handlers.set(channel, handler)
+      }),
+    } as unknown as Pick<IpcMain, 'handle'>
+    const launchState = {
+      supported: true,
+      enabled: false,
+      status: 'disabled' as const,
+    }
+    const actions: AppIpcActions = {
+      getLaunchAtLogin: vi.fn(() => launchState),
+      setLaunchAtLogin: vi.fn(() => ({
+        ...launchState,
+        enabled: true,
+        status: 'enabled' as const,
+      })),
+    }
+    const security: TimerIpcSecurity = {
+      isTrustedSender: vi.fn(() => isTrusted),
+    }
+
+    registerAppIpcHandlers(ipc, actions, security)
+    return { handlers, actions, security, launchState }
+  }
+
+  it('reads and updates launch-at-login through explicit channels', () => {
+    const { handlers, actions, launchState } = createAppHarness()
+
+    expect(handlers.size).toBe(2)
+    expect(
+      handlers.get(APP_IPC_CHANNELS.getLaunchAtLogin)?.(trustedEvent),
+    ).toBe(launchState)
+    handlers
+      .get(APP_IPC_CHANNELS.setLaunchAtLogin)
+      ?.(trustedEvent, true)
+    expect(actions.setLaunchAtLogin).toHaveBeenCalledWith(true)
+  })
+
+  it('validates the sender and launch-at-login value', () => {
+    const untrusted = createAppHarness(false)
+    expect(() =>
+      untrusted.handlers
+        .get(APP_IPC_CHANNELS.getLaunchAtLogin)
+        ?.(trustedEvent),
+    ).toThrow('untrusted renderer')
+    expect(untrusted.actions.getLaunchAtLogin).not.toHaveBeenCalled()
+
+    const trusted = createAppHarness()
+    expect(() =>
+      trusted.handlers
+        .get(APP_IPC_CHANNELS.setLaunchAtLogin)
+        ?.(trustedEvent, 'true'),
+    ).toThrow('boolean')
+    expect(trusted.actions.setLaunchAtLogin).not.toHaveBeenCalled()
   })
 })

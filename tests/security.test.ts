@@ -45,4 +45,14 @@ describe('Electron renderer security', () => {
     expect(policy).not.toContain("'unsafe-eval'")
     expect(policy).not.toContain('https:')
   })
+
+  it('allows only the development exceptions required by Vite', () => {
+    const policy = buildContentSecurityPolicy(true)
+
+    expect(policy).toContain(
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+    )
+    expect(policy).toContain('ws://localhost:*')
+    expect(policy).toContain("object-src 'none'")
+  })
 })

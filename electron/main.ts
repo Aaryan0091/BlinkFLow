@@ -9,7 +9,6 @@ import {
   powerMonitor,
   screen,
   session,
-  shell,
   type Display,
   type IpcMainInvokeEvent,
   type WebContents,
@@ -17,8 +16,10 @@ import {
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import {
+  registerAppIpcHandlers,
   registerTimerIpcHandlers,
   TIMER_IPC_CHANNELS,
+  type LaunchAtLoginState,
 } from './ipc-handlers.js'
 import { pauseBackgroundMedia } from './media-controller.js'
 import {
@@ -33,6 +34,10 @@ import {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const isDev = !app.isPackaged
+
+if (isDev) {
+  app.setPath('userData', path.join(app.getPath('userData'), 'development'))
+}
 
 let mainWindow: BrowserWindow | null = null
 const breakWindows = new Map<number, BrowserWindow>()
@@ -90,6 +95,47 @@ function isTrustedIpcSender(event: IpcMainInvokeEvent) {
     event.senderFrame === event.sender.mainFrame &&
     isTrustedRendererUrl(event.senderFrame.url)
   )
+}
+
+function getLaunchAtLoginState(): LaunchAtLoginState {
+  const platformSupported =
+    process.platform === 'darwin' || process.platform === 'win32'
+
+  if (!platformSupported) {
+    return { supported: false, enabled: false, status: 'unsupported' }
+  }
+
+  if (!app.isPackaged) {
+    return {
+      supported: false,
+      enabled: false,
+      status: 'available-after-install',
+    }
+  }
+
+  const settings = app.getLoginItemSettings()
+  if (process.platform === 'darwin' && settings.status === 'requires-approval') {
+    return {
+      supported: true,
+      enabled: settings.openAtLogin,
+      status: 'requires-approval',
+    }
+  }
+
+  return {
+    supported: true,
+    enabled: settings.openAtLogin,
+    status: settings.openAtLogin ? 'enabled' : 'disabled',
+  }
+}
+
+function setLaunchAtLogin(enabled: boolean) {
+  if (!getLaunchAtLoginState().supported) {
+    return getLaunchAtLoginState()
+  }
+
+  app.setLoginItemSettings({ openAtLogin: enabled })
+  return getLaunchAtLoginState()
 }
 
 function persistTimerState() {
@@ -205,7 +251,8 @@ function createBreakWindow(display: Display) {
   const window = new BrowserWindow({
     ...display.bounds,
     frame: false,
-    transparent: true,
+    transparent: false,
+    backgroundColor: '#04060b',
     alwaysOnTop: true,
     focusable: true,
     fullscreenable: false,
@@ -298,7 +345,6 @@ function hideBreakWindows() {
 function notifyFocusEnded() {
   const timerState = timerEngine.getState()
   void pauseBackgroundMedia()
-  shell.beep()
   showBreakWindows()
 
   if (Notification.isSupported()) {
@@ -317,7 +363,6 @@ function handleTimerTransition(transition: TimerTransition) {
     return
   }
 
-  shell.beep()
   hideBreakWindows()
 }
 
@@ -339,7 +384,14 @@ function startTimer() {
 }
 
 function setRemainingTime(requestedRemainingMs: number) {
-  const timerState = timerEngine.setRemaining(requestedRemainingMs)
+  let timerState = timerEngine.setRemaining(requestedRemainingMs)
+
+  if (requestedRemainingMs <= 0) {
+    const transition = timerEngine.tick()
+    if (transition) handleTimerTransition(transition)
+    timerState = timerEngine.getState()
+  }
+
   sendState(true)
   return timerState
 }
@@ -376,6 +428,19 @@ function stopTimer() {
   clearTicker()
   hideBreakWindows()
   const timerState = timerEngine.stop()
+  sendState(true)
+  return timerState
+}
+
+function restNow() {
+  const wasAlreadyInBreak = timerEngine.shouldShowBreak()
+  const timerState = timerEngine.restNow()
+
+  if (!wasAlreadyInBreak && timerEngine.shouldShowBreak()) {
+    notifyFocusEnded()
+    resumeTimerInterval()
+  }
+
   sendState(true)
   return timerState
 }
@@ -423,7 +488,11 @@ function createMainWindow() {
   void mainWindow.loadURL(getRendererUrl('main'))
 }
 
-const hasSingleInstanceLock = app.requestSingleInstanceLock()
+// Keep the installed application single-instance, but do not let an orphaned
+// development Electron process kill a fresh Vite session. This can happen
+// after the dev server is stopped while the tray process is still alive,
+// leaving its window pointed at an unavailable localhost URL.
+const hasSingleInstanceLock = isDev || app.requestSingleInstanceLock()
 
 if (!hasSingleInstanceLock) {
   app.quit()
@@ -493,9 +562,18 @@ if (!hasSingleInstanceLock) {
       pause: pauseTimer,
       resume: resumeTimer,
       stop: stopTimer,
+      restNow,
       setRemaining: setRemainingTime,
       setBreakDuration,
       setAutoMode,
+    },
+    { isTrustedSender: isTrustedIpcSender },
+  )
+  registerAppIpcHandlers(
+    ipcMain,
+    {
+      getLaunchAtLogin: getLaunchAtLoginState,
+      setLaunchAtLogin,
     },
     { isTrustedSender: isTrustedIpcSender },
   )

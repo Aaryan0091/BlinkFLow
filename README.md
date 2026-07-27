@@ -23,6 +23,7 @@ A UI-first desktop reminder app built with React, Vite, TypeScript, and Electron
 - Bundles Lora and Raleway locally for fully offline typography
 - Sandboxes renderers and restricts CSP, IPC, navigation, and new windows
 - Keeps running from the system tray when the main window is closed
+- Offers an optional native “Launch at login” setting on macOS and Windows
 - Lets you start, pause, resume, stop, reopen, or quit from the tray menu
 - Includes local `21st.dev` CLI scripts for UI exploration
 

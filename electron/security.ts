@@ -38,7 +38,9 @@ export function createRendererUrlValidator({
 }
 
 export function buildContentSecurityPolicy(isDev: boolean) {
-  const scriptSource = isDev ? "script-src 'self' 'unsafe-eval'" : "script-src 'self'"
+  const scriptSource = isDev
+    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+    : "script-src 'self'"
   const connectSource = isDev
     ? "connect-src 'self' ws://localhost:* http://localhost:* ws://127.0.0.1:* http://127.0.0.1:*"
     : "connect-src 'self'"

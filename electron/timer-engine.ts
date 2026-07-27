@@ -11,6 +11,8 @@ export type TimerState = {
   remainingMs: number
   elapsedFocusMs: number
   completedFocusSessions: number
+  totalScreenTimeMs: number
+  totalEyeRestTimeMs: number
   startedAt: number | null
   breakStartedAt: number | null
   autoMode: boolean
@@ -51,6 +53,8 @@ export function createDefaultTimerState(): TimerState {
     remainingMs: DEFAULT_FOCUS_DURATION_MS,
     elapsedFocusMs: 0,
     completedFocusSessions: 0,
+    totalScreenTimeMs: 0,
+    totalEyeRestTimeMs: 0,
     startedAt: null,
     breakStartedAt: null,
     autoMode: false,
@@ -92,6 +96,12 @@ export function isTimerSnapshot(value: unknown): value is TimerSnapshot {
     isFiniteNumber(state?.remainingMs) &&
     isFiniteNumber(state?.elapsedFocusMs) &&
     isFiniteNumber(state?.completedFocusSessions) &&
+    (state?.totalScreenTimeMs === undefined ||
+      (isFiniteNumber(state.totalScreenTimeMs) &&
+        state.totalScreenTimeMs >= 0)) &&
+    (state?.totalEyeRestTimeMs === undefined ||
+      (isFiniteNumber(state.totalEyeRestTimeMs) &&
+        state.totalEyeRestTimeMs >= 0)) &&
     (state?.startedAt === null || isFiniteNumber(state?.startedAt)) &&
     (state?.breakStartedAt === null || isFiniteNumber(state?.breakStartedAt)) &&
     typeof state?.autoMode === 'boolean'
@@ -234,7 +244,10 @@ export function restoreTimerSnapshot(
   snapshot: TimerSnapshot,
   now: number,
 ): RestoredTimer {
-  const state = { ...snapshot.state }
+  const state = {
+    ...createDefaultTimerState(),
+    ...snapshot.state,
+  }
 
   if (!state.isRunning || state.phase === 'idle') {
     return idleTimer(state)
@@ -303,10 +316,12 @@ export class TimerEngine {
   private phaseStartedAt: number | null = null
   private pausedRemainingMs = DEFAULT_FOCUS_DURATION_MS
   private pausedPhase: ResumableTimerPhase = 'idle'
+  private lastAccountedAt: number
   private readonly now: () => number
 
   constructor(options: TimerEngineOptions = {}) {
     this.now = options.now ?? Date.now
+    this.lastAccountedAt = this.now()
     this.state = createDefaultTimerState()
 
     if (options.snapshot && isTimerSnapshot(options.snapshot)) {
@@ -330,6 +345,7 @@ export class TimerEngine {
   }
 
   getSnapshot(savedAt = this.now()): TimerSnapshot {
+    this.accountActiveTime(savedAt)
     return {
       version: 1,
       savedAt,
@@ -337,6 +353,30 @@ export class TimerEngine {
       phaseStartedAt: this.phaseStartedAt,
       pausedRemainingMs: this.pausedRemainingMs,
       pausedPhase: this.pausedPhase,
+    }
+  }
+
+  private accountActiveTime(now = this.now()) {
+    const elapsedSinceLastSample = Math.max(now - this.lastAccountedAt, 0)
+    this.lastAccountedAt = now
+
+    if (
+      elapsedSinceLastSample === 0 ||
+      !this.state.isRunning ||
+      this.state.isPaused
+    ) {
+      return
+    }
+
+    const activeTimeMs = Math.min(
+      elapsedSinceLastSample,
+      Math.max(this.state.remainingMs, 0),
+    )
+
+    if (this.state.phase === 'focus') {
+      this.state.totalScreenTimeMs += activeTimeMs
+    } else if (this.state.phase === 'break') {
+      this.state.totalEyeRestTimeMs += activeTimeMs
     }
   }
 
@@ -367,6 +407,7 @@ export class TimerEngine {
     requestedRemainingMs = this.state.focusDurationMs,
     now = this.now(),
   ) {
+    this.lastAccountedAt = now
     const remainingMs = clamp(
       requestedRemainingMs,
       1,
@@ -389,6 +430,7 @@ export class TimerEngine {
   }
 
   private enterBreakPhase(now = this.now()) {
+    this.lastAccountedAt = now
     this.state.phase = 'break'
     this.state.isRunning = true
     this.state.isPaused = false
@@ -401,14 +443,32 @@ export class TimerEngine {
   }
 
   start() {
+    this.accountActiveTime()
     const requestedRemainingMs = this.state.remainingMs
     this.state.completedFocusSessions = 0
     this.enterFocusPhase(true, requestedRemainingMs)
     return this.state
   }
 
+  restNow() {
+    const effectivePhase =
+      this.state.phase === 'paused' ? this.pausedPhase : this.state.phase
+
+    if (!this.state.isRunning || effectivePhase !== 'focus') {
+      return this.state
+    }
+
+    this.accountActiveTime()
+    if (!this.state.isPaused) this.syncFocusMetrics()
+    this.state.completedFocusSessions += 1
+    this.enterBreakPhase()
+    return this.state
+  }
+
   tick(): TimerTransition | null {
     if (!this.state.isRunning || this.state.isPaused) return null
+
+    this.accountActiveTime()
 
     if (this.state.phase === 'focus') {
       this.syncFocusMetrics()
@@ -438,6 +498,7 @@ export class TimerEngine {
   pause() {
     if (!this.state.isRunning || this.state.isPaused) return this.state
 
+    this.accountActiveTime()
     if (this.state.phase === 'focus') this.syncFocusMetrics()
     if (this.state.phase === 'break') this.syncBreakMetrics()
 
@@ -464,14 +525,17 @@ export class TimerEngine {
 
     const elapsedBeforePause =
       this.state.breakDurationMs - this.pausedRemainingMs
+    const now = this.now()
+    this.lastAccountedAt = now
     this.state.phase = 'break'
     this.state.remainingMs = this.pausedRemainingMs
-    this.phaseStartedAt = this.now() - elapsedBeforePause
+    this.phaseStartedAt = now - elapsedBeforePause
     this.state.breakStartedAt = this.phaseStartedAt
     return this.state
   }
 
   stop() {
+    this.accountActiveTime()
     this.phaseStartedAt = null
     this.pausedPhase = 'idle'
     this.pausedRemainingMs = this.state.focusDurationMs
@@ -488,6 +552,7 @@ export class TimerEngine {
   setRemaining(requestedRemainingMs: number) {
     if (!Number.isFinite(requestedRemainingMs)) return this.state
 
+    this.accountActiveTime()
     const effectivePhase =
       this.state.phase === 'paused' ? this.pausedPhase : this.state.phase
     const isBreak = effectivePhase === 'break'
@@ -496,7 +561,7 @@ export class TimerEngine {
       : this.state.focusDurationMs
     const remainingMs = clamp(
       Math.round(requestedRemainingMs / 1000) * 1000,
-      1000,
+      0,
       durationMs,
     )
     const elapsedMs = durationMs - remainingMs
@@ -526,6 +591,7 @@ export class TimerEngine {
   setBreakDuration(requestedDurationMs: number) {
     if (!Number.isFinite(requestedDurationMs)) return this.state
 
+    this.accountActiveTime()
     const previousDurationMs = this.state.breakDurationMs
     const durationMs = clamp(
       Math.round(requestedDurationMs / 5000) * 5000,
@@ -566,6 +632,9 @@ export class TimerEngine {
   resetAfterWake() {
     const completedFocusSessions = this.state.completedFocusSessions
 
+    // Sleep time is not active screen time. Reset the accounting clock before
+    // stopping so the suspended interval is never added to either total.
+    this.lastAccountedAt = this.now()
     this.stop()
     this.state.completedFocusSessions = completedFocusSessions
 

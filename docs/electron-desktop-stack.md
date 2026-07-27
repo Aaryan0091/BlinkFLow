@@ -269,6 +269,17 @@ synchronized with the React interface.
 On macOS, the tray icon is converted to a template image so macOS can adapt it
 to light and dark menu bars.
 
+### Launch at login
+
+The main interface includes an optional **Launch at login** switch. In packaged
+macOS and Windows builds, the renderer requests the current operating-system
+setting through validated IPC and Electron's `app.getLoginItemSettings()`.
+Changing the switch calls `app.setLoginItemSettings()` in the main process.
+
+The control is unavailable in development builds so Eye Break never registers
+the Electron development executable as a startup item. On macOS, the interface
+also reports when the login item requires approval in System Settings.
+
 ### Full-screen break overlay
 
 When focus time finishes, Eye Break:
