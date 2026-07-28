@@ -1,6 +1,7 @@
 export type TimerPhase = 'idle' | 'focus' | 'break' | 'paused'
 export type ResumableTimerPhase = Exclude<TimerPhase, 'paused'>
 export type TimerTransition = 'focus-ended' | 'break-ended'
+export type RestOverlayMode = 'none' | 'primary-display' | 'all-displays'
 
 export type TimerState = {
   phase: TimerPhase
@@ -16,6 +17,7 @@ export type TimerState = {
   startedAt: number | null
   breakStartedAt: number | null
   autoMode: boolean
+  restOverlayMode: RestOverlayMode
 }
 
 export type TimerSnapshot = {
@@ -58,6 +60,7 @@ export function createDefaultTimerState(): TimerState {
     startedAt: null,
     breakStartedAt: null,
     autoMode: false,
+    restOverlayMode: 'all-displays',
   }
 }
 
@@ -71,6 +74,14 @@ function isTimerPhase(value: unknown): value is TimerPhase {
 
 function isResumablePhase(value: unknown): value is ResumableTimerPhase {
   return value === 'idle' || value === 'focus' || value === 'break'
+}
+
+function isRestOverlayMode(value: unknown): value is RestOverlayMode {
+  return (
+    value === 'none' ||
+    value === 'primary-display' ||
+    value === 'all-displays'
+  )
 }
 
 export function isTimerSnapshot(value: unknown): value is TimerSnapshot {
@@ -104,7 +115,9 @@ export function isTimerSnapshot(value: unknown): value is TimerSnapshot {
         state.totalEyeRestTimeMs >= 0)) &&
     (state?.startedAt === null || isFiniteNumber(state?.startedAt)) &&
     (state?.breakStartedAt === null || isFiniteNumber(state?.breakStartedAt)) &&
-    typeof state?.autoMode === 'boolean'
+    typeof state?.autoMode === 'boolean' &&
+    (state.restOverlayMode === undefined ||
+      isRestOverlayMode(state.restOverlayMode))
   )
 }
 
@@ -626,6 +639,11 @@ export class TimerEngine {
 
   setAutoMode(enabled: boolean) {
     this.state.autoMode = Boolean(enabled)
+    return this.state
+  }
+
+  setRestOverlayMode(mode: RestOverlayMode) {
+    this.state.restOverlayMode = mode
     return this.state
   }
 

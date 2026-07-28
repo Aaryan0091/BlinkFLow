@@ -1,6 +1,7 @@
 export {}
 
 type TimerPhase = 'idle' | 'focus' | 'break' | 'paused'
+type RestOverlayMode = 'none' | 'primary-display' | 'all-displays'
 
 type TimerState = {
   phase: TimerPhase
@@ -16,6 +17,7 @@ type TimerState = {
   startedAt: number | null
   breakStartedAt: number | null
   autoMode: boolean
+  restOverlayMode: RestOverlayMode
 }
 
 type Unsubscribe = () => void
@@ -43,6 +45,7 @@ declare global {
       setRemaining: (remainingMs: number) => Promise<TimerState>
       setBreakDuration: (durationMs: number) => Promise<TimerState>
       setAutoMode: (enabled: boolean) => Promise<TimerState>
+      setRestOverlayMode: (mode: RestOverlayMode) => Promise<TimerState>
       getLaunchAtLogin: () => Promise<LaunchAtLoginState>
       setLaunchAtLogin: (enabled: boolean) => Promise<LaunchAtLoginState>
       onStateChange: (callback: (state: TimerState) => void) => Promise<Unsubscribe>

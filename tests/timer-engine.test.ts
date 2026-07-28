@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   createDefaultTimerState,
+  isTimerSnapshot,
   restoreTimerSnapshot,
   TimerEngine,
   type TimerSnapshot,
@@ -36,6 +37,19 @@ describe('TimerEngine', () => {
     expect(state.isRunning).toBe(true)
     expect(state.remainingMs).toBe(20 * 60 * 1000)
     expect(state.startedAt).toBe(now)
+  })
+
+  it('supports all three persisted rest display modes', () => {
+    const engine = new TimerEngine()
+
+    expect(engine.getState().restOverlayMode).toBe('all-displays')
+    expect(engine.setRestOverlayMode('none').restOverlayMode).toBe('none')
+    expect(
+      engine.setRestOverlayMode('primary-display').restOverlayMode,
+    ).toBe('primary-display')
+    expect(
+      engine.setRestOverlayMode('all-displays').restOverlayMode,
+    ).toBe('all-displays')
   })
 
   it('moves from focus to break and increments completed sessions', () => {
@@ -220,6 +234,18 @@ describe('TimerEngine', () => {
 })
 
 describe('timer snapshot restoration', () => {
+  it('migrates snapshots saved before display modes existed', () => {
+    const legacySnapshot = snapshotWith({})
+    delete (
+      legacySnapshot.state as Partial<TimerState>
+    ).restOverlayMode
+
+    expect(isTimerSnapshot(legacySnapshot)).toBe(true)
+    expect(
+      restoreTimerSnapshot(legacySnapshot, 0).state.restOverlayMode,
+    ).toBe('all-displays')
+  })
+
   it('restores an active focus period using the original timestamp', () => {
     const snapshot = snapshotWith({
       phase: 'focus',

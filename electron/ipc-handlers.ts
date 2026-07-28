@@ -1,5 +1,8 @@
 import type { IpcMain, IpcMainInvokeEvent } from 'electron'
-import type { TimerState } from './timer-engine.js'
+import type {
+  RestOverlayMode,
+  TimerState,
+} from './timer-engine.js'
 
 export const TIMER_IPC_CHANNELS = {
   stateChanged: 'timer:state',
@@ -12,6 +15,7 @@ export const TIMER_IPC_CHANNELS = {
   setRemaining: 'timer:set-remaining',
   setBreakDuration: 'timer:set-break-duration',
   setAutoMode: 'timer:set-auto-mode',
+  setRestOverlayMode: 'timer:set-rest-overlay-mode',
 } as const
 
 export const APP_IPC_CHANNELS = {
@@ -40,6 +44,7 @@ export type TimerIpcActions = {
   setRemaining: (remainingMs: number) => TimerState
   setBreakDuration: (durationMs: number) => TimerState
   setAutoMode: (enabled: boolean) => TimerState
+  setRestOverlayMode: (mode: RestOverlayMode) => TimerState
 }
 
 export type AppIpcActions = {
@@ -96,6 +101,19 @@ function validateBoolean(value: unknown, label: string) {
   return value
 }
 
+function validateRestOverlayMode(value: unknown): RestOverlayMode {
+  if (
+    value !== 'none' &&
+    value !== 'primary-display' &&
+    value !== 'all-displays'
+  ) {
+    throw new TypeError(
+      'mode must be none, primary-display, or all-displays',
+    )
+  }
+  return value
+}
+
 export function registerTimerIpcHandlers(
   ipc: Pick<IpcMain, 'handle'>,
   actions: TimerIpcActions,
@@ -144,6 +162,13 @@ export function registerTimerIpcHandlers(
     (event, enabled: unknown) => {
       assertTrustedSender(event, security)
       return actions.setAutoMode(validateBoolean(enabled, 'enabled'))
+    },
+  )
+  ipc.handle(
+    TIMER_IPC_CHANNELS.setRestOverlayMode,
+    (event, mode: unknown) => {
+      assertTrustedSender(event, security)
+      return actions.setRestOverlayMode(validateRestOverlayMode(mode))
     },
   )
 }

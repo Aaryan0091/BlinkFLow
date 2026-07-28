@@ -22,6 +22,7 @@ import {
   type LaunchAtLoginState,
 } from './ipc-handlers.js'
 import { pauseBackgroundMedia } from './media-controller.js'
+import { selectRestOverlayDisplays } from './rest-overlay.js'
 import {
   buildContentSecurityPolicy,
   createRendererUrlValidator,
@@ -234,9 +235,25 @@ function clearTicker() {
 }
 
 function configureBreakWindow(window: BrowserWindow, display: Display) {
-  window.setBounds(display.bounds)
+  if (process.platform === 'darwin' && window.isSimpleFullScreen()) {
+    const currentDisplay = screen.getDisplayMatching(window.getBounds())
+    if (currentDisplay.id !== display.id) {
+      window.setSimpleFullScreen(false)
+    }
+  }
+
+  if (process.platform !== 'darwin' || !window.isSimpleFullScreen()) {
+    window.setBounds(display.bounds, false)
+  }
+
   window.setAlwaysOnTop(true, 'screen-saver', 1)
   window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+
+  if (process.platform === 'darwin') {
+    if (!window.isSimpleFullScreen()) window.setSimpleFullScreen(true)
+  } else if (!window.isFullScreen()) {
+    window.setFullScreen(true)
+  }
 }
 
 function getPriorityDisplayId() {
@@ -255,7 +272,7 @@ function createBreakWindow(display: Display) {
     backgroundColor: '#04060b',
     alwaysOnTop: true,
     focusable: true,
-    fullscreenable: false,
+    fullscreenable: true,
     hasShadow: false,
     skipTaskbar: true,
     resizable: false,
@@ -280,7 +297,12 @@ function createBreakWindow(display: Display) {
   })
 
   window.on('blur', () => {
-    if (!timerEngine.shouldShowBreak()) return
+    if (
+      !timerEngine.shouldShowBreak() ||
+      timerEngine.getState().restOverlayMode !== 'all-displays'
+    ) {
+      return
+    }
 
     setTimeout(() => {
       const focusedWindow = BrowserWindow.getFocusedWindow()
@@ -295,25 +317,43 @@ function createBreakWindow(display: Display) {
 }
 
 function syncBreakWindows() {
-  const displays = screen.getAllDisplays()
-  const connectedDisplayIds = new Set(displays.map((display) => display.id))
+  const displays = selectRestOverlayDisplays(
+    timerEngine.getState().restOverlayMode,
+    screen.getAllDisplays(),
+    screen.getPrimaryDisplay(),
+  )
+  const targetDisplayIds = new Set(displays.map((display) => display.id))
 
   for (const [displayId, window] of breakWindows) {
-    if (!connectedDisplayIds.has(displayId)) {
+    if (!targetDisplayIds.has(displayId)) {
       window.destroy()
       breakWindows.delete(displayId)
     }
   }
 
   for (const display of displays) {
-    const window = breakWindows.get(display.id) ?? createBreakWindow(display)
+    let window = breakWindows.get(display.id)
+    if (
+      window &&
+      screen.getDisplayMatching(window.getBounds()).id !== display.id
+    ) {
+      window.destroy()
+      breakWindows.delete(display.id)
+      window = undefined
+    }
+    window ??= createBreakWindow(display)
     configureBreakWindow(window, display)
   }
 }
 
 function bringBreakWindowsForward() {
   syncBreakWindows()
-  const priorityDisplayId = getPriorityDisplayId()
+  const mode = timerEngine.getState().restOverlayMode
+  if (mode === 'none') return
+  const priorityDisplayId =
+    mode === 'primary-display'
+      ? screen.getPrimaryDisplay().id
+      : getPriorityDisplayId()
 
   for (const [displayId, window] of breakWindows) {
     if (window.isDestroyed()) continue
@@ -333,11 +373,20 @@ function bringBreakWindowsForward() {
 }
 
 function showBreakWindows() {
+  if (timerEngine.getState().restOverlayMode === 'none') {
+    syncBreakWindows()
+    return
+  }
   bringBreakWindowsForward()
 }
 
 function hideBreakWindows() {
   for (const window of breakWindows.values()) {
+    if (process.platform === 'darwin' && window.isSimpleFullScreen()) {
+      window.setSimpleFullScreen(false)
+    } else if (process.platform !== 'darwin' && window.isFullScreen()) {
+      window.setFullScreen(false)
+    }
     window.hide()
   }
 }
@@ -404,6 +453,21 @@ function setBreakDuration(requestedDurationMs: number) {
 
 function setAutoMode(enabled: boolean) {
   const timerState = timerEngine.setAutoMode(enabled)
+  sendState(true)
+  return timerState
+}
+
+function setRestOverlayMode(
+  mode: Parameters<TimerEngine['setRestOverlayMode']>[0],
+) {
+  const timerState = timerEngine.setRestOverlayMode(mode)
+
+  if (timerEngine.shouldShowBreak()) {
+    showBreakWindows()
+  } else {
+    hideBreakWindows()
+  }
+
   sendState(true)
   return timerState
 }
@@ -566,6 +630,7 @@ if (!hasSingleInstanceLock) {
       setRemaining: setRemainingTime,
       setBreakDuration,
       setAutoMode,
+      setRestOverlayMode,
     },
     { isTrustedSender: isTrustedIpcSender },
   )

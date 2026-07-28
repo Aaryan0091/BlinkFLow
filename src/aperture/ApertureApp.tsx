@@ -2,6 +2,9 @@ import { AnimatePresence, motion } from 'motion/react'
 import {
   Check,
   Eye,
+  GalleryHorizontal,
+  Monitor,
+  MonitorOff,
   Pause,
   Play,
   Settings2,
@@ -9,12 +12,13 @@ import {
   Square,
   X,
 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { playRestCue, unlockRestAudio } from '../rest-audio'
 import { IrisTimer } from './IrisTimer'
 import './aperture.css'
 
 type TimerPhase = 'idle' | 'focus' | 'break' | 'paused'
+type RestOverlayMode = 'none' | 'primary-display' | 'all-displays'
 
 type TimerState = {
   phase: TimerPhase
@@ -30,6 +34,7 @@ type TimerState = {
   startedAt: number | null
   breakStartedAt: number | null
   autoMode: boolean
+  restOverlayMode: RestOverlayMode
 }
 
 const DEFAULT_STATE: TimerState = {
@@ -46,6 +51,7 @@ const DEFAULT_STATE: TimerState = {
   startedAt: null,
   breakStartedAt: null,
   autoMode: false,
+  restOverlayMode: 'all-displays',
 }
 
 const browserFallback = {
@@ -63,6 +69,10 @@ const browserFallback = {
   setAutoMode: async (enabled: boolean) => ({
     ...DEFAULT_STATE,
     autoMode: enabled,
+  }),
+  setRestOverlayMode: async (mode: RestOverlayMode) => ({
+    ...DEFAULT_STATE,
+    restOverlayMode: mode,
   }),
   getLaunchAtLogin: async () => ({
     supported: false,
@@ -99,6 +109,7 @@ export default function ApertureApp() {
   const [timer, setTimer] = useState<TimerState>(DEFAULT_STATE)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [launchAtLogin, setLaunchAtLogin] = useState(false)
+  const [restOverlayModeSaving, setRestOverlayModeSaving] = useState(false)
   const wasInBreak = useRef(false)
 
   useEffect(() => {
@@ -360,6 +371,25 @@ export default function ApertureApp() {
               void eyeBreak.setBreakDuration(seconds * 1000).then(setTimer)
             }}
             onAutoMode={(enabled) => void eyeBreak.setAutoMode(enabled).then(setTimer)}
+            restOverlayModeSaving={restOverlayModeSaving}
+            onRestOverlayMode={(mode) => {
+              const previousMode = timer.restOverlayMode
+              setTimer((current) => ({
+                ...current,
+                restOverlayMode: mode,
+              }))
+              setRestOverlayModeSaving(true)
+              void eyeBreak
+                .setRestOverlayMode(mode)
+                .then(setTimer)
+                .catch(() =>
+                  setTimer((current) => ({
+                    ...current,
+                    restOverlayMode: previousMode,
+                  })),
+                )
+                .finally(() => setRestOverlayModeSaving(false))
+            }}
             onLaunchAtLogin={(enabled) =>
               void eyeBreak.setLaunchAtLogin(enabled).then((state) => {
                 setLaunchAtLogin(state.enabled)
@@ -425,6 +455,8 @@ function Preferences({
   onClose,
   onRestDuration,
   onAutoMode,
+  restOverlayModeSaving,
+  onRestOverlayMode,
   onLaunchAtLogin,
 }: {
   timer: TimerState
@@ -432,6 +464,8 @@ function Preferences({
   onClose: () => void
   onRestDuration: (seconds: number) => void
   onAutoMode: (enabled: boolean) => void
+  restOverlayModeSaving: boolean
+  onRestOverlayMode: (mode: RestOverlayMode) => void
   onLaunchAtLogin: (enabled: boolean) => void
 }) {
   const restSeconds = Math.round(timer.breakDurationMs / 1000)
@@ -526,13 +560,41 @@ function Preferences({
             checked={launchAtLogin}
             onChange={onLaunchAtLogin}
           />
-          <Toggle
-            label="Immersive rest"
-            hint="Takes over every connected display when it is time to look away."
-            checked
-            disabled
-            onChange={() => undefined}
-          />
+          <h3>Immersive rest</h3>
+          <div
+            className="aperture-overlay-options"
+            role="radiogroup"
+            aria-label="Rest display behavior"
+            aria-busy={restOverlayModeSaving}
+          >
+            <RestOverlayOption
+              mode="none"
+              icon={<MonitorOff size={18} aria-hidden="true" />}
+              title="No screens"
+              description="Sound and countdown continue without covering a display"
+              selected={timer.restOverlayMode === 'none'}
+              disabled={restOverlayModeSaving}
+              onSelect={onRestOverlayMode}
+            />
+            <RestOverlayOption
+              mode="primary-display"
+              icon={<Monitor size={18} aria-hidden="true" />}
+              title="Main display"
+              description="Rest screen on the main display; other screens stay usable"
+              selected={timer.restOverlayMode === 'primary-display'}
+              disabled={restOverlayModeSaving}
+              onSelect={onRestOverlayMode}
+            />
+            <RestOverlayOption
+              mode="all-displays"
+              icon={<GalleryHorizontal size={18} aria-hidden="true" />}
+              title="All displays"
+              description="Rest screen appears across every connected display"
+              selected={timer.restOverlayMode === 'all-displays'}
+              disabled={restOverlayModeSaving}
+              onSelect={onRestOverlayMode}
+            />
+          </div>
 
           <p className="aperture-privacy">
             <ShieldCheck size={15} />
@@ -541,6 +603,50 @@ function Preferences({
         </div>
       </motion.aside>
     </>
+  )
+}
+
+function RestOverlayOption({
+  mode,
+  icon,
+  title,
+  description,
+  selected,
+  disabled,
+  onSelect,
+}: {
+  mode: RestOverlayMode
+  icon: ReactNode
+  title: string
+  description: string
+  selected: boolean
+  disabled: boolean
+  onSelect: (mode: RestOverlayMode) => void
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      className={selected ? 'active' : undefined}
+      disabled={disabled}
+      onClick={() => onSelect(mode)}
+      onKeyDown={(event) => {
+        if (event.key === ' ' || event.key === 'Enter') {
+          event.preventDefault()
+          onSelect(mode)
+        }
+      }}
+    >
+      <span className="aperture-overlay-icon">{icon}</span>
+      <span>
+        <strong>{title}</strong>
+        <small>{description}</small>
+      </span>
+      <span className="aperture-overlay-check" aria-hidden="true">
+        {selected && <Check size={13} />}
+      </span>
+    </button>
   )
 }
 

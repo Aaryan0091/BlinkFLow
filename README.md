@@ -19,7 +19,7 @@ A UI-first desktop reminder app built with React, Vite, TypeScript, and Electron
 - Plays a system sound when focus and rest periods end
 - Pauses supported background media players when a focus period ends
 - Shows a native desktop notification when focus time ends
-- Opens a priority full-screen break overlay on every connected display
+- Lets the user show the rest screen on no displays, the main display only, or every connected display
 - Bundles Lora and Raleway locally for fully offline typography
 - Sandboxes renderers and restricts CSP, IPC, navigation, and new windows
 - Keeps running from the system tray when the main window is closed

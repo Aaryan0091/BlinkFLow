@@ -224,8 +224,8 @@ The current local macOS package is unsigned. Public distribution still requires:
 
 ### Creating Electron windows
 
-Eye Break creates one main `BrowserWindow` and one synchronized break
-`BrowserWindow` for every connected display.
+Eye Break creates one main `BrowserWindow` and synchronizes break windows with
+the selected rest-display mode.
 
 #### Main window
 
@@ -286,12 +286,17 @@ When focus time finishes, Eye Break:
 
 1. Requests supported media players to pause.
 2. Plays the system alert sound.
-3. Shows a synchronized break window on every connected display.
+3. Applies the selected rest-display behavior.
 4. Sends a native notification.
 5. Begins the rest countdown.
 
-The break overlay has Pause and Stop controls. It is hidden when the rest period
-ends or the user stops the cycle.
+**No screens** keeps the sound and countdown active without creating an
+overlay. **Main display** covers only the operating system's primary display
+and leaves other displays usable. **All displays** creates a synchronized
+fullscreen rest window for every connected display.
+
+The break overlay has Pause and Stop controls. It is hidden when the rest
+period ends or the user stops the cycle.
 
 ### Always-on-top priority
 
@@ -308,10 +313,11 @@ Electron documents `screen-saver` as a high always-on-top level and permits a
 relative level of one on macOS. `moveTop()` moves the window to the top of the
 native z-order.
 
-Eye Break tracks displays through Electron's `screen` events. A display attached
-during an active break receives an overlay immediately; a removed display's
-window is destroyed. One overlay receives keyboard focus, while all overlays
-remain interactive and above full-screen applications.
+Eye Break tracks displays through Electron's `screen` events. During an active
+break, the overlay set is recalculated from the selected mode whenever a
+display is attached, removed, or changes metrics. One overlay receives keyboard
+focus in all-display mode. Main-display mode does not pull focus back when the
+user interacts with an application on another display.
 
 If every break window loses focus while a break is active, Eye Break brings the
 overlay set forward again. The user can still Pause or Stop from any overlay.

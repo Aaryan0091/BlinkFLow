@@ -37,6 +37,7 @@ function createHarness(isTrusted = true) {
     setRemaining: vi.fn(() => state),
     setBreakDuration: vi.fn(() => state),
     setAutoMode: vi.fn(() => state),
+    setRestOverlayMode: vi.fn(() => state),
   }
   const security: TimerIpcSecurity = {
     isTrustedSender: vi.fn(() => isTrusted),
@@ -50,7 +51,7 @@ describe('timer IPC handlers', () => {
   it('registers every request channel and forwards values to timer actions', () => {
     const { handlers, actions, security, state } = createHarness()
 
-    expect(handlers.size).toBe(9)
+    expect(handlers.size).toBe(10)
     expect(handlers.get(TIMER_IPC_CHANNELS.getState)?.(trustedEvent)).toBe(state)
     expect(handlers.get(TIMER_IPC_CHANNELS.start)?.(trustedEvent)).toBe(state)
     expect(handlers.get(TIMER_IPC_CHANNELS.pause)?.(trustedEvent)).toBe(state)
@@ -63,12 +64,18 @@ describe('timer IPC handlers', () => {
       .get(TIMER_IPC_CHANNELS.setBreakDuration)
       ?.(trustedEvent, 35_000)
     handlers.get(TIMER_IPC_CHANNELS.setAutoMode)?.(trustedEvent, true)
+    handlers
+      .get(TIMER_IPC_CHANNELS.setRestOverlayMode)
+      ?.(trustedEvent, 'primary-display')
 
     expect(actions.setRemaining).toHaveBeenCalledWith(42_000)
     expect(actions.setBreakDuration).toHaveBeenCalledWith(35_000)
     expect(actions.setAutoMode).toHaveBeenCalledWith(true)
+    expect(actions.setRestOverlayMode).toHaveBeenCalledWith(
+      'primary-display',
+    )
     expect(actions.restNow).toHaveBeenCalledOnce()
-    expect(security.isTrustedSender).toHaveBeenCalledTimes(9)
+    expect(security.isTrustedSender).toHaveBeenCalledTimes(10)
   })
 
   it('blocks every request from an untrusted renderer', () => {
@@ -103,10 +110,16 @@ describe('timer IPC handlers', () => {
         .get(TIMER_IPC_CHANNELS.setAutoMode)
         ?.(trustedEvent, 'true'),
     ).toThrow('boolean')
+    expect(() =>
+      handlers
+        .get(TIMER_IPC_CHANNELS.setRestOverlayMode)
+        ?.(trustedEvent, 'secondary-display'),
+    ).toThrow('none, primary-display, or all-displays')
 
     expect(actions.setRemaining).not.toHaveBeenCalled()
     expect(actions.setBreakDuration).not.toHaveBeenCalled()
     expect(actions.setAutoMode).not.toHaveBeenCalled()
+    expect(actions.setRestOverlayMode).not.toHaveBeenCalled()
   })
 
   it('keeps the pushed state event on a separate shared channel', () => {

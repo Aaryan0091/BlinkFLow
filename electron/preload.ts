@@ -14,6 +14,10 @@ const api = {
     ipcRenderer.invoke(TIMER_IPC_CHANNELS.setBreakDuration, durationMs),
   setAutoMode: (enabled: boolean) =>
     ipcRenderer.invoke(TIMER_IPC_CHANNELS.setAutoMode, enabled),
+  setRestOverlayMode: (
+    mode: 'none' | 'primary-display' | 'all-displays',
+  ) =>
+    ipcRenderer.invoke(TIMER_IPC_CHANNELS.setRestOverlayMode, mode),
   getLaunchAtLogin: () =>
     ipcRenderer.invoke(APP_IPC_CHANNELS.getLaunchAtLogin),
   setLaunchAtLogin: (enabled: boolean) =>
