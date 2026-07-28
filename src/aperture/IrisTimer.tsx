@@ -16,19 +16,16 @@ const TICK_COUNT = 72
 
 type VisualPhase = 'idle' | 'focus' | 'rest'
 
+const ACTIVE_PALETTE = {
+  core: '#6d5cf6',
+  glow: '#4a37c9',
+  bright: '#a8f5e9',
+  halo: 'rgba(109,92,246,0.34)',
+}
+
 const PALETTES = {
-  idle: {
-    core: '#4c5a78',
-    glow: '#38455f',
-    bright: '#9fb0cc',
-    halo: 'rgba(109,92,246,0.16)',
-  },
-  focus: {
-    core: '#6d5cf6',
-    glow: '#4a37c9',
-    bright: '#c9c4ff',
-    halo: 'rgba(109,92,246,0.34)',
-  },
+  idle: ACTIVE_PALETTE,
+  focus: ACTIVE_PALETTE,
   rest: {
     core: '#14b892',
     glow: '#0c7f66',
@@ -332,7 +329,7 @@ export function IrisTimer({
                 stroke={palette.bright}
                 strokeWidth={fiber.width}
                 strokeLinecap="round"
-                opacity={fiber.opacity * (running ? 1 : 0.55)}
+                opacity={fiber.opacity}
               />
             ))}
           </motion.g>

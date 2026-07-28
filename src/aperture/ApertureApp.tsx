@@ -61,6 +61,7 @@ const browserFallback = {
   resume: async () => DEFAULT_STATE,
   stop: async () => DEFAULT_STATE,
   restNow: async () => DEFAULT_STATE,
+  endBreak: async () => DEFAULT_STATE,
   setRemaining: async () => DEFAULT_STATE,
   setBreakDuration: async (durationMs: number) => ({
     ...DEFAULT_STATE,

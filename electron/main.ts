@@ -312,6 +312,17 @@ function createBreakWindow(display: Display) {
     }, 50)
   })
 
+  window.webContents.on('before-input-event', (event, input) => {
+    if (
+      input.type === 'keyDown' &&
+      input.key === 'Escape' &&
+      !input.isAutoRepeat
+    ) {
+      event.preventDefault()
+      endBreak()
+    }
+  })
+
   void window.loadURL(getRendererUrl('break'))
   return window
 }
@@ -509,6 +520,22 @@ function restNow() {
   return timerState
 }
 
+function endBreak() {
+  if (!timerEngine.shouldShowBreak()) return timerEngine.getState()
+
+  const timerState = timerEngine.endBreak()
+  hideBreakWindows()
+
+  if (timerState.isRunning && !timerState.isPaused) {
+    resumeTimerInterval()
+  } else {
+    clearTicker()
+  }
+
+  sendState(true)
+  return timerState
+}
+
 function handleSystemWake() {
   clearTicker()
   hideBreakWindows()
@@ -627,6 +654,7 @@ if (!hasSingleInstanceLock) {
       resume: resumeTimer,
       stop: stopTimer,
       restNow,
+      endBreak,
       setRemaining: setRemainingTime,
       setBreakDuration,
       setAutoMode,

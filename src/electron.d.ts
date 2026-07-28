@@ -42,6 +42,7 @@ declare global {
       resume: () => Promise<TimerState>
       stop: () => Promise<TimerState>
       restNow: () => Promise<TimerState>
+      endBreak: () => Promise<TimerState>
       setRemaining: (remainingMs: number) => Promise<TimerState>
       setBreakDuration: (durationMs: number) => Promise<TimerState>
       setAutoMode: (enabled: boolean) => Promise<TimerState>

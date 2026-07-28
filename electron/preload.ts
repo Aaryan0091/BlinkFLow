@@ -8,6 +8,7 @@ const api = {
   resume: () => ipcRenderer.invoke(TIMER_IPC_CHANNELS.resume),
   stop: () => ipcRenderer.invoke(TIMER_IPC_CHANNELS.stop),
   restNow: () => ipcRenderer.invoke(TIMER_IPC_CHANNELS.restNow),
+  endBreak: () => ipcRenderer.invoke(TIMER_IPC_CHANNELS.endBreak),
   setRemaining: (remainingMs: number) =>
     ipcRenderer.invoke(TIMER_IPC_CHANNELS.setRemaining, remainingMs),
   setBreakDuration: (durationMs: number) =>

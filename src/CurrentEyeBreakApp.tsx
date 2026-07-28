@@ -81,6 +81,9 @@ const browserFallback = {
   async restNow() {
     return defaultState
   },
+  async endBreak() {
+    return defaultState
+  },
   async setRemaining() {
     return defaultState
   },
@@ -234,7 +237,7 @@ function App() {
             .setBreakDuration(Math.min(timer.breakDurationMs + 20_000, 120_000))
             .then(setTimer)
         }
-        onSkip={() => void eyeBreak.setRemaining(0).then(setTimer)}
+        onSkip={() => void eyeBreak.endBreak().then(setTimer)}
       />
     )
   }

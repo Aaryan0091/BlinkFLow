@@ -1,6 +1,6 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { Plus } from 'lucide-react'
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 
 const RING_RADIUS = 148
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS
@@ -39,6 +39,18 @@ export function BreakOverlay({
   )
 
   const rippleIndices = useMemo(() => [0, 1, 2], [])
+
+  useEffect(() => {
+    const endRest = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.repeat) return
+      event.preventDefault()
+      event.stopPropagation()
+      onSkip()
+    }
+
+    window.addEventListener('keydown', endRest, true)
+    return () => window.removeEventListener('keydown', endRest, true)
+  }, [onSkip])
 
   return (
     <main

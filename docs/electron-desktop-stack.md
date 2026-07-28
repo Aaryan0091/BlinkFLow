@@ -517,9 +517,12 @@ All channel names are centralized in `TIMER_IPC_CHANNELS`.
 | `timer:pause` | Renderer → main | None | Pause focus or break |
 | `timer:resume` | Renderer → main | None | Resume the paused phase |
 | `timer:stop` | Renderer → main | None | Reset to idle |
+| `timer:rest-now` | Renderer → main | None | Start the rest phase immediately |
+| `timer:end-break` | Renderer → main | None | End the current rest and close its overlays |
 | `timer:set-remaining` | Renderer → main | Milliseconds | Adjust remaining time |
 | `timer:set-break-duration` | Renderer → main | Milliseconds | Change rest duration |
 | `timer:set-auto-mode` | Renderer → main | Boolean | Enable or disable repetition |
+| `timer:set-rest-overlay-mode` | Renderer → main | Display mode | Choose no overlay, primary display, or all displays |
 | `timer:state` | Main → renderer | `TimerState` | Push state changes to windows |
 
 ### Main-to-renderer state updates

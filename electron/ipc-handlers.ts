@@ -12,6 +12,7 @@ export const TIMER_IPC_CHANNELS = {
   resume: 'timer:resume',
   stop: 'timer:stop',
   restNow: 'timer:rest-now',
+  endBreak: 'timer:end-break',
   setRemaining: 'timer:set-remaining',
   setBreakDuration: 'timer:set-break-duration',
   setAutoMode: 'timer:set-auto-mode',
@@ -41,6 +42,7 @@ export type TimerIpcActions = {
   resume: () => TimerState
   stop: () => TimerState
   restNow: () => TimerState
+  endBreak: () => TimerState
   setRemaining: (remainingMs: number) => TimerState
   setBreakDuration: (durationMs: number) => TimerState
   setAutoMode: (enabled: boolean) => TimerState
@@ -142,6 +144,10 @@ export function registerTimerIpcHandlers(
   ipc.handle(TIMER_IPC_CHANNELS.restNow, (event) => {
     assertTrustedSender(event, security)
     return actions.restNow()
+  })
+  ipc.handle(TIMER_IPC_CHANNELS.endBreak, (event) => {
+    assertTrustedSender(event, security)
+    return actions.endBreak()
   })
   ipc.handle(
     TIMER_IPC_CHANNELS.setRemaining,

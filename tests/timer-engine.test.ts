@@ -91,6 +91,33 @@ describe('TimerEngine', () => {
     expect(pausedEngine.getState().isPaused).toBe(false)
   })
 
+  it('ends an active or paused break and stops when Auto Mode is off', () => {
+    const activeEngine = new TimerEngine({ now: () => 0 })
+    activeEngine.start()
+    activeEngine.restNow()
+    expect(activeEngine.endBreak().phase).toBe('idle')
+    expect(activeEngine.getState().isRunning).toBe(false)
+
+    const pausedEngine = new TimerEngine({ now: () => 0 })
+    pausedEngine.start()
+    pausedEngine.restNow()
+    pausedEngine.pause()
+    expect(pausedEngine.endBreak().phase).toBe('idle')
+    expect(pausedEngine.getState().isRunning).toBe(false)
+  })
+
+  it('starts the next focus period when a break ends in Auto Mode', () => {
+    const engine = new TimerEngine({ now: () => 0 })
+    engine.setAutoMode(true)
+    engine.start()
+    engine.restNow()
+
+    const state = engine.endBreak()
+    expect(state.phase).toBe('focus')
+    expect(state.isRunning).toBe(true)
+    expect(state.remainingMs).toBe(state.focusDurationMs)
+  })
+
   it('stops after the break when Auto Mode is off', () => {
     let now = 1000
     const engine = new TimerEngine({ now: () => now })

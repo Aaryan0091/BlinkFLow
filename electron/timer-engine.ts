@@ -478,6 +478,26 @@ export class TimerEngine {
     return this.state
   }
 
+  endBreak() {
+    const effectivePhase =
+      this.state.phase === 'paused' ? this.pausedPhase : this.state.phase
+
+    if (!this.state.isRunning || effectivePhase !== 'break') {
+      return this.state
+    }
+
+    this.accountActiveTime()
+    if (!this.state.isPaused) this.syncBreakMetrics()
+
+    if (this.state.autoMode) {
+      this.enterFocusPhase(true)
+    } else {
+      this.stop()
+    }
+
+    return this.state
+  }
+
   tick(): TimerTransition | null {
     if (!this.state.isRunning || this.state.isPaused) return null
 

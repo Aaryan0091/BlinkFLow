@@ -34,6 +34,7 @@ function createHarness(isTrusted = true) {
     resume: vi.fn(() => state),
     stop: vi.fn(() => state),
     restNow: vi.fn(() => state),
+    endBreak: vi.fn(() => state),
     setRemaining: vi.fn(() => state),
     setBreakDuration: vi.fn(() => state),
     setAutoMode: vi.fn(() => state),
@@ -51,13 +52,14 @@ describe('timer IPC handlers', () => {
   it('registers every request channel and forwards values to timer actions', () => {
     const { handlers, actions, security, state } = createHarness()
 
-    expect(handlers.size).toBe(10)
+    expect(handlers.size).toBe(11)
     expect(handlers.get(TIMER_IPC_CHANNELS.getState)?.(trustedEvent)).toBe(state)
     expect(handlers.get(TIMER_IPC_CHANNELS.start)?.(trustedEvent)).toBe(state)
     expect(handlers.get(TIMER_IPC_CHANNELS.pause)?.(trustedEvent)).toBe(state)
     expect(handlers.get(TIMER_IPC_CHANNELS.resume)?.(trustedEvent)).toBe(state)
     expect(handlers.get(TIMER_IPC_CHANNELS.stop)?.(trustedEvent)).toBe(state)
     expect(handlers.get(TIMER_IPC_CHANNELS.restNow)?.(trustedEvent)).toBe(state)
+    expect(handlers.get(TIMER_IPC_CHANNELS.endBreak)?.(trustedEvent)).toBe(state)
 
     handlers.get(TIMER_IPC_CHANNELS.setRemaining)?.(trustedEvent, 42_000)
     handlers
@@ -75,7 +77,8 @@ describe('timer IPC handlers', () => {
       'primary-display',
     )
     expect(actions.restNow).toHaveBeenCalledOnce()
-    expect(security.isTrustedSender).toHaveBeenCalledTimes(10)
+    expect(actions.endBreak).toHaveBeenCalledOnce()
+    expect(security.isTrustedSender).toHaveBeenCalledTimes(11)
   })
 
   it('blocks every request from an untrusted renderer', () => {
