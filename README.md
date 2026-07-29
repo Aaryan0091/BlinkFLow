@@ -5,7 +5,7 @@ A UI-first desktop reminder app built with React, Vite, TypeScript, and Electron
 ## Documentation
 
 - [Electron desktop stack](docs/electron-desktop-stack.md) — Electron, Electron
-  Builder, desktop features, media handling, IPC, and security
+  Builder, desktop features, sound preferences, IPC, and security
 
 ## What it does
 
@@ -16,8 +16,8 @@ A UI-first desktop reminder app built with React, Vite, TypeScript, and Electron
 - Supports an optional Auto Mode for repeating focus and rest cycles
 - Restores the active, paused, or automatically repeating timer after an app restart
 - Resets cleanly after laptop sleep: Auto Mode begins a fresh cycle, while manual mode waits for Start
-- Plays a system sound when focus and rest periods end
-- Pauses supported background media players when a focus period ends
+- Plays a calm local chime when focus and rest periods end
+- Lets the user adjust rest-chime volume from mute to 100%
 - Shows a native desktop notification when focus time ends
 - Lets the user show the rest screen on no displays, the main display only, or every connected display
 - Bundles Lora and Raleway locally for fully offline typography

@@ -326,20 +326,21 @@ At the end of focus time, Eye Break checks
 `Notification.isSupported()` and creates an operating-system notification.
 
 The message includes the selected break duration. The notification itself is
-silent because Eye Break separately calls `shell.beep()` for a consistent
-transition sound.
+silent because Eye Break separately plays its own local transition chime.
 
 Notification display can still depend on the user's operating-system permission
 and notification settings.
 
 ### System sounds
 
-`shell.beep()` is called:
+The renderer creates dependency-free Web Audio chimes:
 
 - When focus ends and the break begins
 - When the break ends
 
-The project does not currently provide sound selection or volume controls.
+Preferences include a `0–100%` rest-sound slider. The selected level is stored
+locally and applied to both transition chimes. Setting the slider to zero mutes
+Eye Break without changing system volume or controlling another application.
 
 ### Running while the main window is hidden
 
