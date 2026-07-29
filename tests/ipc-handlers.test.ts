@@ -39,6 +39,7 @@ function createHarness(isTrusted = true) {
     setBreakDuration: vi.fn(() => state),
     setAutoMode: vi.fn(() => state),
     setRestOverlayMode: vi.fn(() => state),
+    setRestAppearanceMode: vi.fn(() => state),
   }
   const security: TimerIpcSecurity = {
     isTrustedSender: vi.fn(() => isTrusted),
@@ -52,7 +53,7 @@ describe('timer IPC handlers', () => {
   it('registers every request channel and forwards values to timer actions', () => {
     const { handlers, actions, security, state } = createHarness()
 
-    expect(handlers.size).toBe(11)
+    expect(handlers.size).toBe(12)
     expect(handlers.get(TIMER_IPC_CHANNELS.getState)?.(trustedEvent)).toBe(state)
     expect(handlers.get(TIMER_IPC_CHANNELS.start)?.(trustedEvent)).toBe(state)
     expect(handlers.get(TIMER_IPC_CHANNELS.pause)?.(trustedEvent)).toBe(state)
@@ -69,6 +70,9 @@ describe('timer IPC handlers', () => {
     handlers
       .get(TIMER_IPC_CHANNELS.setRestOverlayMode)
       ?.(trustedEvent, 'primary-display')
+    handlers
+      .get(TIMER_IPC_CHANNELS.setRestAppearanceMode)
+      ?.(trustedEvent, 'black-timer')
 
     expect(actions.setRemaining).toHaveBeenCalledWith(42_000)
     expect(actions.setBreakDuration).toHaveBeenCalledWith(35_000)
@@ -76,9 +80,12 @@ describe('timer IPC handlers', () => {
     expect(actions.setRestOverlayMode).toHaveBeenCalledWith(
       'primary-display',
     )
+    expect(actions.setRestAppearanceMode).toHaveBeenCalledWith(
+      'black-timer',
+    )
     expect(actions.restNow).toHaveBeenCalledOnce()
     expect(actions.endBreak).toHaveBeenCalledOnce()
-    expect(security.isTrustedSender).toHaveBeenCalledTimes(11)
+    expect(security.isTrustedSender).toHaveBeenCalledTimes(12)
   })
 
   it('blocks every request from an untrusted renderer', () => {
@@ -118,11 +125,17 @@ describe('timer IPC handlers', () => {
         .get(TIMER_IPC_CHANNELS.setRestOverlayMode)
         ?.(trustedEvent, 'secondary-display'),
     ).toThrow('none, primary-display, or all-displays')
+    expect(() =>
+      handlers
+        .get(TIMER_IPC_CHANNELS.setRestAppearanceMode)
+        ?.(trustedEvent, 'transparent'),
+    ).toThrow('ambient, black, or black-timer')
 
     expect(actions.setRemaining).not.toHaveBeenCalled()
     expect(actions.setBreakDuration).not.toHaveBeenCalled()
     expect(actions.setAutoMode).not.toHaveBeenCalled()
     expect(actions.setRestOverlayMode).not.toHaveBeenCalled()
+    expect(actions.setRestAppearanceMode).not.toHaveBeenCalled()
   })
 
   it('keeps the pushed state event on a separate shared channel', () => {

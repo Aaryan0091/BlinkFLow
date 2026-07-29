@@ -5,11 +5,14 @@ import {
   GalleryHorizontal,
   Monitor,
   MonitorOff,
+  Moon,
   Pause,
   Play,
   Settings2,
   ShieldCheck,
+  Sparkles,
   Square,
+  Timer,
   Volume2,
   VolumeX,
   X,
@@ -26,6 +29,7 @@ import './aperture.css'
 
 type TimerPhase = 'idle' | 'focus' | 'break' | 'paused'
 type RestOverlayMode = 'none' | 'primary-display' | 'all-displays'
+type RestAppearanceMode = 'ambient' | 'black' | 'black-timer'
 
 type TimerState = {
   phase: TimerPhase
@@ -42,6 +46,7 @@ type TimerState = {
   breakStartedAt: number | null
   autoMode: boolean
   restOverlayMode: RestOverlayMode
+  restAppearanceMode: RestAppearanceMode
 }
 
 const DEFAULT_STATE: TimerState = {
@@ -59,6 +64,7 @@ const DEFAULT_STATE: TimerState = {
   breakStartedAt: null,
   autoMode: false,
   restOverlayMode: 'all-displays',
+  restAppearanceMode: 'ambient',
 }
 
 const browserFallback = {
@@ -81,6 +87,10 @@ const browserFallback = {
   setRestOverlayMode: async (mode: RestOverlayMode) => ({
     ...DEFAULT_STATE,
     restOverlayMode: mode,
+  }),
+  setRestAppearanceMode: async (mode: RestAppearanceMode) => ({
+    ...DEFAULT_STATE,
+    restAppearanceMode: mode,
   }),
   getLaunchAtLogin: async () => ({
     supported: false,
@@ -118,6 +128,7 @@ export default function ApertureApp() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [launchAtLogin, setLaunchAtLogin] = useState(false)
   const [restOverlayModeSaving, setRestOverlayModeSaving] = useState(false)
+  const [restAppearanceModeSaving, setRestAppearanceModeSaving] = useState(false)
   const [restVolume, setRestVolume] = useState(loadRestVolumePreference)
   const wasInBreak = useRef(false)
 
@@ -403,6 +414,25 @@ export default function ApertureApp() {
                 )
                 .finally(() => setRestOverlayModeSaving(false))
             }}
+            restAppearanceModeSaving={restAppearanceModeSaving}
+            onRestAppearanceMode={(mode) => {
+              const previousMode = timer.restAppearanceMode
+              setTimer((current) => ({
+                ...current,
+                restAppearanceMode: mode,
+              }))
+              setRestAppearanceModeSaving(true)
+              void eyeBreak
+                .setRestAppearanceMode(mode)
+                .then(setTimer)
+                .catch(() =>
+                  setTimer((current) => ({
+                    ...current,
+                    restAppearanceMode: previousMode,
+                  })),
+                )
+                .finally(() => setRestAppearanceModeSaving(false))
+            }}
             onLaunchAtLogin={(enabled) =>
               void eyeBreak.setLaunchAtLogin(enabled).then((state) => {
                 setLaunchAtLogin(state.enabled)
@@ -472,6 +502,8 @@ function Preferences({
   onRestVolume,
   restOverlayModeSaving,
   onRestOverlayMode,
+  restAppearanceModeSaving,
+  onRestAppearanceMode,
   onLaunchAtLogin,
 }: {
   timer: TimerState
@@ -483,6 +515,8 @@ function Preferences({
   onRestVolume: (volume: number) => void
   restOverlayModeSaving: boolean
   onRestOverlayMode: (mode: RestOverlayMode) => void
+  restAppearanceModeSaving: boolean
+  onRestAppearanceMode: (mode: RestAppearanceMode) => void
   onLaunchAtLogin: (enabled: boolean) => void
 }) {
   const restSeconds = Math.round(timer.breakDurationMs / 1000)
@@ -608,6 +642,43 @@ function Preferences({
             checked={launchAtLogin}
             onChange={onLaunchAtLogin}
           />
+
+          <h3>Rest screen style</h3>
+          <div
+            className="aperture-overlay-options"
+            role="radiogroup"
+            aria-label="Rest screen appearance"
+            aria-busy={restAppearanceModeSaving}
+          >
+            <RestAppearanceOption
+              mode="ambient"
+              icon={<Sparkles size={18} aria-hidden="true" />}
+              title="Ambient"
+              description="The current calming scene, guidance, timer, and controls"
+              selected={timer.restAppearanceMode === 'ambient'}
+              disabled={restAppearanceModeSaving}
+              onSelect={onRestAppearanceMode}
+            />
+            <RestAppearanceOption
+              mode="black"
+              icon={<Moon size={18} aria-hidden="true" />}
+              title="Pitch black"
+              description="A completely black rest screen with no visible content"
+              selected={timer.restAppearanceMode === 'black'}
+              disabled={restAppearanceModeSaving}
+              onSelect={onRestAppearanceMode}
+            />
+            <RestAppearanceOption
+              mode="black-timer"
+              icon={<Timer size={18} aria-hidden="true" />}
+              title="Black + timer"
+              description="Pitch black with the circular countdown and soft ripples"
+              selected={timer.restAppearanceMode === 'black-timer'}
+              disabled={restAppearanceModeSaving}
+              onSelect={onRestAppearanceMode}
+            />
+          </div>
+
           <h3>Immersive rest</h3>
           <div
             className="aperture-overlay-options"
@@ -651,6 +722,44 @@ function Preferences({
         </div>
       </motion.aside>
     </>
+  )
+}
+
+function RestAppearanceOption({
+  mode,
+  icon,
+  title,
+  description,
+  selected,
+  disabled,
+  onSelect,
+}: {
+  mode: RestAppearanceMode
+  icon: ReactNode
+  title: string
+  description: string
+  selected: boolean
+  disabled: boolean
+  onSelect: (mode: RestAppearanceMode) => void
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      className={selected ? 'active' : undefined}
+      disabled={disabled}
+      onClick={() => onSelect(mode)}
+    >
+      <span className="aperture-overlay-icon">{icon}</span>
+      <span>
+        <strong>{title}</strong>
+        <small>{description}</small>
+      </span>
+      <span className="aperture-overlay-check" aria-hidden="true">
+        {selected && <Check size={13} />}
+      </span>
+    </button>
   )
 }
 

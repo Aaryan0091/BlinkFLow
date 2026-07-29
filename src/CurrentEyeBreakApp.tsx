@@ -25,6 +25,8 @@ import {
 import './App.css'
 
 type TimerPhase = 'idle' | 'focus' | 'break' | 'paused'
+type RestOverlayMode = 'none' | 'primary-display' | 'all-displays'
+type RestAppearanceMode = 'ambient' | 'black' | 'black-timer'
 
 type TimerState = {
   phase: TimerPhase
@@ -40,6 +42,8 @@ type TimerState = {
   startedAt: number | null
   breakStartedAt: number | null
   autoMode: boolean
+  restOverlayMode: RestOverlayMode
+  restAppearanceMode: RestAppearanceMode
 }
 
 type LaunchAtLoginState = {
@@ -67,6 +71,8 @@ const defaultState: TimerState = {
   startedAt: null,
   breakStartedAt: null,
   autoMode: false,
+  restOverlayMode: 'all-displays',
+  restAppearanceMode: 'ambient',
 }
 
 const browserFallback = {
@@ -99,6 +105,12 @@ const browserFallback = {
   },
   async setAutoMode(enabled: boolean) {
     return { ...defaultState, autoMode: enabled }
+  },
+  async setRestOverlayMode(mode: RestOverlayMode) {
+    return { ...defaultState, restOverlayMode: mode }
+  },
+  async setRestAppearanceMode(mode: RestAppearanceMode) {
+    return { ...defaultState, restAppearanceMode: mode }
   },
   async getLaunchAtLogin(): Promise<LaunchAtLoginState> {
     return {
@@ -236,6 +248,7 @@ function App() {
   if (isBreakWindow) {
     return (
       <BreakOverlay
+        appearance={timer.restAppearanceMode}
         remainingMs={timer.remainingMs}
         totalMs={timer.breakDurationMs}
         cycle={timer.completedFocusSessions}

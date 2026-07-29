@@ -1508,7 +1508,7 @@
   font-family: var(--font-body);
 }
 
-.rest-overlay::after {
+.rest-overlay--ambient::after {
   position: absolute;
   z-index: 8;
   inset: -50%;
@@ -1517,6 +1517,40 @@
   opacity: 0.035;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
   animation: rest-grain-shift 7s steps(6) infinite;
+}
+
+.rest-overlay--black,
+.rest-overlay--black-timer {
+  background: #000;
+}
+
+.rest-overlay--black-timer .rest-overlay-ripple {
+  border-color: rgba(168, 245, 233, 0.2);
+}
+
+.rest-overlay-minimal-content {
+  position: relative;
+  z-index: 10;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+}
+
+.rest-overlay-minimal-content .rest-overlay-countdown {
+  margin-top: 0;
+}
+
+.rest-overlay-accessible-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .rest-overlay-field,
@@ -1804,7 +1838,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .rest-overlay::after {
+  .rest-overlay--ambient::after {
     animation: none;
   }
 }

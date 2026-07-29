@@ -1,9 +1,10 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { Plus } from 'lucide-react'
-import { useEffect, useMemo } from 'react'
+import { useEffect } from 'react'
 
 const RING_RADIUS = 148
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS
+const RIPPLE_INDICES = [0, 1, 2] as const
 
 const REST_CUES = [
   'Find something at least 20 feet — about 6 metres — away.',
@@ -13,6 +14,7 @@ const REST_CUES = [
 ]
 
 type BreakOverlayProps = {
+  appearance: 'ambient' | 'black' | 'black-timer'
   remainingMs: number
   totalMs: number
   cycle: number
@@ -22,6 +24,7 @@ type BreakOverlayProps = {
 }
 
 export function BreakOverlay({
+  appearance,
   remainingMs,
   totalMs,
   cycle,
@@ -38,8 +41,6 @@ export function BreakOverlay({
     Math.floor((progress * REST_CUES.length) % REST_CUES.length),
   )
 
-  const rippleIndices = useMemo(() => [0, 1, 2], [])
-
   useEffect(() => {
     const endRest = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || event.repeat) return
@@ -52,9 +53,47 @@ export function BreakOverlay({
     return () => window.removeEventListener('keydown', endRest, true)
   }, [onSkip])
 
+  const countdown = (
+    <RestCountdown
+      progress={progress}
+      seconds={seconds}
+      reducedMotion={Boolean(prefersReducedMotion)}
+    />
+  )
+
+  if (appearance === 'black') {
+    return (
+      <main
+        className="rest-overlay rest-overlay--black"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Eye rest in progress"
+      >
+        <p className="rest-overlay-accessible-status" aria-live="polite">
+          Eye rest in progress. {seconds} seconds remaining. Press Escape to end
+          the rest.
+        </p>
+      </main>
+    )
+  }
+
+  if (appearance === 'black-timer') {
+    return (
+      <main
+        className="rest-overlay rest-overlay--black-timer"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Eye rest in progress"
+      >
+        {!prefersReducedMotion && <RestRipples />}
+        <div className="rest-overlay-minimal-content">{countdown}</div>
+      </main>
+    )
+  }
+
   return (
     <main
-      className="rest-overlay"
+      className="rest-overlay rest-overlay--ambient"
       role="dialog"
       aria-modal="true"
       aria-label="Eye rest in progress"
@@ -72,22 +111,7 @@ export function BreakOverlay({
       />
       <div className="rest-overlay-corner-glow" aria-hidden="true" />
 
-      {!prefersReducedMotion &&
-        rippleIndices.map((index) => (
-          <motion.div
-            key={index}
-            className="rest-overlay-ripple"
-            aria-hidden="true"
-            initial={{ scale: 0.55, opacity: 0 }}
-            animate={{ scale: [0.55, 2.6], opacity: [0, 0.5, 0] }}
-            transition={{
-              duration: 9,
-              delay: index * 3,
-              repeat: Infinity,
-              ease: 'easeOut',
-            }}
-          />
-        ))}
+      {!prefersReducedMotion && <RestRipples />}
 
       <div className="rest-overlay-content">
         <motion.div
@@ -112,64 +136,7 @@ export function BreakOverlay({
           {paused ? 'Your eye rest is paused' : 'Look away from the screen'}
         </motion.h1>
 
-        <motion.div
-          className="rest-overlay-countdown"
-          initial={
-            prefersReducedMotion
-              ? { opacity: 1 }
-              : { opacity: 0, scale: 0.92 }
-          }
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.28, duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-        >
-          {!prefersReducedMotion && (
-            <motion.div
-              className="rest-overlay-bloom"
-              aria-hidden="true"
-              animate={{ scale: [1, 1.07, 1], opacity: [0.5, 0.85, 0.5] }}
-              transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
-            />
-          )}
-          <svg
-            viewBox="0 0 320 320"
-            className="rest-overlay-ring"
-            aria-hidden="true"
-          >
-            <defs>
-              <linearGradient id="restArc" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#14b892" />
-                <stop offset="100%" stopColor="#b6f5e2" />
-              </linearGradient>
-            </defs>
-            <circle
-              cx="160"
-              cy="160"
-              r={RING_RADIUS}
-              fill="none"
-              stroke="#ffffff"
-              strokeOpacity="0.07"
-              strokeWidth="2"
-            />
-            <circle
-              cx="160"
-              cy="160"
-              r={RING_RADIUS}
-              fill="none"
-              stroke="url(#restArc)"
-              strokeWidth="4"
-              strokeLinecap="round"
-              strokeDasharray={RING_CIRCUMFERENCE}
-              strokeDashoffset={RING_CIRCUMFERENCE * progress}
-              className="rest-overlay-progress"
-            />
-          </svg>
-          <div className="rest-overlay-time">
-            <strong aria-live="polite" aria-atomic="true">
-              {seconds}
-            </strong>
-            <span>seconds</span>
-          </div>
-        </motion.div>
+        {countdown}
 
         <div className="rest-overlay-guidance">
           <AnimatePresence mode="wait">
@@ -211,6 +178,95 @@ export function BreakOverlay({
         </div>
       </div>
     </main>
+  )
+}
+
+function RestRipples() {
+  return RIPPLE_INDICES.map((index) => (
+    <motion.div
+      key={index}
+      className="rest-overlay-ripple"
+      aria-hidden="true"
+      initial={{ scale: 0.55, opacity: 0 }}
+      animate={{ scale: [0.55, 2.6], opacity: [0, 0.5, 0] }}
+      transition={{
+        duration: 9,
+        delay: index * 3,
+        repeat: Infinity,
+        ease: 'easeOut',
+      }}
+    />
+  ))
+}
+
+function RestCountdown({
+  progress,
+  seconds,
+  reducedMotion,
+}: {
+  progress: number
+  seconds: number
+  reducedMotion: boolean
+}) {
+  return (
+    <motion.div
+      className="rest-overlay-countdown"
+      initial={
+        reducedMotion
+          ? { opacity: 1 }
+          : { opacity: 0, scale: 0.92 }
+      }
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay: 0.28, duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+    >
+      {!reducedMotion && (
+        <motion.div
+          className="rest-overlay-bloom"
+          aria-hidden="true"
+          animate={{ scale: [1, 1.07, 1], opacity: [0.5, 0.85, 0.5] }}
+          transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      )}
+      <svg
+        viewBox="0 0 320 320"
+        className="rest-overlay-ring"
+        aria-hidden="true"
+      >
+        <defs>
+          <linearGradient id="restArc" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#14b892" />
+            <stop offset="100%" stopColor="#a8f5e9" />
+          </linearGradient>
+        </defs>
+        <circle
+          cx="160"
+          cy="160"
+          r={RING_RADIUS}
+          fill="none"
+          stroke="#ffffff"
+          strokeOpacity="0.07"
+          strokeWidth="2"
+        />
+        <circle
+          cx="160"
+          cy="160"
+          r={RING_RADIUS}
+          fill="none"
+          stroke="url(#restArc)"
+          strokeWidth="4"
+          strokeLinecap="round"
+          strokeDasharray={RING_CIRCUMFERENCE}
+          strokeDashoffset={RING_CIRCUMFERENCE * progress}
+          className="rest-overlay-progress"
+        />
+      </svg>
+      <div className="rest-overlay-time">
+        <strong aria-live="polite" aria-atomic="true">
+          {seconds}
+        </strong>
+        <span>seconds</span>
+      </div>
+    </motion.div>
   )
 }
 

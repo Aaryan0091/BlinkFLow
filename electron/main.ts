@@ -481,6 +481,14 @@ function setRestOverlayMode(
   return timerState
 }
 
+function setRestAppearanceMode(
+  mode: Parameters<TimerEngine['setRestAppearanceMode']>[0],
+) {
+  const timerState = timerEngine.setRestAppearanceMode(mode)
+  sendState(true)
+  return timerState
+}
+
 function pauseTimer() {
   const timerState = timerEngine.pause()
   if (timerState.isPaused) clearTicker()
@@ -657,6 +665,7 @@ if (!hasSingleInstanceLock) {
       setBreakDuration,
       setAutoMode,
       setRestOverlayMode,
+      setRestAppearanceMode,
     },
     { isTrustedSender: isTrustedIpcSender },
   )

@@ -2,6 +2,7 @@ export type TimerPhase = 'idle' | 'focus' | 'break' | 'paused'
 export type ResumableTimerPhase = Exclude<TimerPhase, 'paused'>
 export type TimerTransition = 'focus-ended' | 'break-ended'
 export type RestOverlayMode = 'none' | 'primary-display' | 'all-displays'
+export type RestAppearanceMode = 'ambient' | 'black' | 'black-timer'
 
 export type TimerState = {
   phase: TimerPhase
@@ -18,6 +19,7 @@ export type TimerState = {
   breakStartedAt: number | null
   autoMode: boolean
   restOverlayMode: RestOverlayMode
+  restAppearanceMode: RestAppearanceMode
 }
 
 export type TimerSnapshot = {
@@ -61,6 +63,7 @@ export function createDefaultTimerState(): TimerState {
     breakStartedAt: null,
     autoMode: false,
     restOverlayMode: 'all-displays',
+    restAppearanceMode: 'ambient',
   }
 }
 
@@ -81,6 +84,14 @@ function isRestOverlayMode(value: unknown): value is RestOverlayMode {
     value === 'none' ||
     value === 'primary-display' ||
     value === 'all-displays'
+  )
+}
+
+function isRestAppearanceMode(value: unknown): value is RestAppearanceMode {
+  return (
+    value === 'ambient' ||
+    value === 'black' ||
+    value === 'black-timer'
   )
 }
 
@@ -117,7 +128,9 @@ export function isTimerSnapshot(value: unknown): value is TimerSnapshot {
     (state?.breakStartedAt === null || isFiniteNumber(state?.breakStartedAt)) &&
     typeof state?.autoMode === 'boolean' &&
     (state.restOverlayMode === undefined ||
-      isRestOverlayMode(state.restOverlayMode))
+      isRestOverlayMode(state.restOverlayMode)) &&
+    (state.restAppearanceMode === undefined ||
+      isRestAppearanceMode(state.restAppearanceMode))
   )
 }
 
@@ -664,6 +677,11 @@ export class TimerEngine {
 
   setRestOverlayMode(mode: RestOverlayMode) {
     this.state.restOverlayMode = mode
+    return this.state
+  }
+
+  setRestAppearanceMode(mode: RestAppearanceMode) {
+    this.state.restAppearanceMode = mode
     return this.state
   }
 

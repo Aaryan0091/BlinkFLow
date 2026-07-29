@@ -52,6 +52,21 @@ describe('TimerEngine', () => {
     ).toBe('all-displays')
   })
 
+  it('supports all three persisted rest screen appearances', () => {
+    const engine = new TimerEngine()
+
+    expect(engine.getState().restAppearanceMode).toBe('ambient')
+    expect(
+      engine.setRestAppearanceMode('black').restAppearanceMode,
+    ).toBe('black')
+    expect(
+      engine.setRestAppearanceMode('black-timer').restAppearanceMode,
+    ).toBe('black-timer')
+    expect(
+      engine.setRestAppearanceMode('ambient').restAppearanceMode,
+    ).toBe('ambient')
+  })
+
   it('moves from focus to break and increments completed sessions', () => {
     let now = 1000
     const engine = new TimerEngine({ now: () => now })
@@ -261,16 +276,19 @@ describe('TimerEngine', () => {
 })
 
 describe('timer snapshot restoration', () => {
-  it('migrates snapshots saved before display modes existed', () => {
+  it('migrates snapshots saved before rest display preferences existed', () => {
     const legacySnapshot = snapshotWith({})
-    delete (
-      legacySnapshot.state as Partial<TimerState>
-    ).restOverlayMode
+    const legacyState = legacySnapshot.state as Partial<TimerState>
+    delete legacyState.restOverlayMode
+    delete legacyState.restAppearanceMode
 
     expect(isTimerSnapshot(legacySnapshot)).toBe(true)
     expect(
       restoreTimerSnapshot(legacySnapshot, 0).state.restOverlayMode,
     ).toBe('all-displays')
+    expect(
+      restoreTimerSnapshot(legacySnapshot, 0).state.restAppearanceMode,
+    ).toBe('ambient')
   })
 
   it('restores an active focus period using the original timestamp', () => {

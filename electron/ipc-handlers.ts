@@ -1,5 +1,6 @@
 import type { IpcMain, IpcMainInvokeEvent } from 'electron'
 import type {
+  RestAppearanceMode,
   RestOverlayMode,
   TimerState,
 } from './timer-engine.js'
@@ -17,6 +18,7 @@ export const TIMER_IPC_CHANNELS = {
   setBreakDuration: 'timer:set-break-duration',
   setAutoMode: 'timer:set-auto-mode',
   setRestOverlayMode: 'timer:set-rest-overlay-mode',
+  setRestAppearanceMode: 'timer:set-rest-appearance-mode',
 } as const
 
 export const APP_IPC_CHANNELS = {
@@ -47,6 +49,7 @@ export type TimerIpcActions = {
   setBreakDuration: (durationMs: number) => TimerState
   setAutoMode: (enabled: boolean) => TimerState
   setRestOverlayMode: (mode: RestOverlayMode) => TimerState
+  setRestAppearanceMode: (mode: RestAppearanceMode) => TimerState
 }
 
 export type AppIpcActions = {
@@ -116,6 +119,17 @@ function validateRestOverlayMode(value: unknown): RestOverlayMode {
   return value
 }
 
+function validateRestAppearanceMode(value: unknown): RestAppearanceMode {
+  if (
+    value !== 'ambient' &&
+    value !== 'black' &&
+    value !== 'black-timer'
+  ) {
+    throw new TypeError('mode must be ambient, black, or black-timer')
+  }
+  return value
+}
+
 export function registerTimerIpcHandlers(
   ipc: Pick<IpcMain, 'handle'>,
   actions: TimerIpcActions,
@@ -175,6 +189,13 @@ export function registerTimerIpcHandlers(
     (event, mode: unknown) => {
       assertTrustedSender(event, security)
       return actions.setRestOverlayMode(validateRestOverlayMode(mode))
+    },
+  )
+  ipc.handle(
+    TIMER_IPC_CHANNELS.setRestAppearanceMode,
+    (event, mode: unknown) => {
+      assertTrustedSender(event, security)
+      return actions.setRestAppearanceMode(validateRestAppearanceMode(mode))
     },
   )
 }

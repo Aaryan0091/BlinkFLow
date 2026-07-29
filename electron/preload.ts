@@ -19,6 +19,10 @@ const api = {
     mode: 'none' | 'primary-display' | 'all-displays',
   ) =>
     ipcRenderer.invoke(TIMER_IPC_CHANNELS.setRestOverlayMode, mode),
+  setRestAppearanceMode: (
+    mode: 'ambient' | 'black' | 'black-timer',
+  ) =>
+    ipcRenderer.invoke(TIMER_IPC_CHANNELS.setRestAppearanceMode, mode),
   getLaunchAtLogin: () =>
     ipcRenderer.invoke(APP_IPC_CHANNELS.getLaunchAtLogin),
   setLaunchAtLogin: (enabled: boolean) =>

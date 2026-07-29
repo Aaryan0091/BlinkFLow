@@ -32,6 +32,7 @@ describe('timer persistence', () => {
     const engine = new TimerEngine({ now: () => now })
     engine.setAutoMode(true)
     engine.setRestOverlayMode('primary-display')
+    engine.setRestAppearanceMode('black-timer')
     engine.setRemaining(5 * 60 * 1000)
     engine.start()
     now += 60 * 1000
@@ -44,6 +45,7 @@ describe('timer persistence', () => {
     expect(loaded?.state.phase).toBe('focus')
     expect(loaded?.state.autoMode).toBe(true)
     expect(loaded?.state.restOverlayMode).toBe('primary-display')
+    expect(loaded?.state.restAppearanceMode).toBe('black-timer')
     expect(loaded?.state.totalScreenTimeMs).toBe(60 * 1000)
     expect(loaded?.state.totalEyeRestTimeMs).toBe(0)
     expect(loaded?.phaseStartedAt).toBe(-895_000)
