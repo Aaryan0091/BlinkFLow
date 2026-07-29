@@ -10,10 +10,17 @@ import {
   Settings2,
   ShieldCheck,
   Square,
+  Volume2,
+  VolumeX,
   X,
 } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { playRestCue, unlockRestAudio } from '../rest-audio'
+import {
+  loadRestVolumePreference,
+  playRestCue,
+  saveRestVolumePreference,
+  unlockRestAudio,
+} from '../rest-audio'
 import { IrisTimer } from './IrisTimer'
 import './aperture.css'
 
@@ -111,6 +118,7 @@ export default function ApertureApp() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [launchAtLogin, setLaunchAtLogin] = useState(false)
   const [restOverlayModeSaving, setRestOverlayModeSaving] = useState(false)
+  const [restVolume, setRestVolume] = useState(loadRestVolumePreference)
   const wasInBreak = useRef(false)
 
   useEffect(() => {
@@ -372,6 +380,10 @@ export default function ApertureApp() {
               void eyeBreak.setBreakDuration(seconds * 1000).then(setTimer)
             }}
             onAutoMode={(enabled) => void eyeBreak.setAutoMode(enabled).then(setTimer)}
+            restVolume={restVolume}
+            onRestVolume={(volume) =>
+              setRestVolume(saveRestVolumePreference(volume))
+            }
             restOverlayModeSaving={restOverlayModeSaving}
             onRestOverlayMode={(mode) => {
               const previousMode = timer.restOverlayMode
@@ -456,6 +468,8 @@ function Preferences({
   onClose,
   onRestDuration,
   onAutoMode,
+  restVolume,
+  onRestVolume,
   restOverlayModeSaving,
   onRestOverlayMode,
   onLaunchAtLogin,
@@ -465,6 +479,8 @@ function Preferences({
   onClose: () => void
   onRestDuration: (seconds: number) => void
   onAutoMode: (enabled: boolean) => void
+  restVolume: number
+  onRestVolume: (volume: number) => void
   restOverlayModeSaving: boolean
   onRestOverlayMode: (mode: RestOverlayMode) => void
   onLaunchAtLogin: (enabled: boolean) => void
@@ -553,6 +569,37 @@ function Preferences({
             checked={timer.autoMode}
             onChange={onAutoMode}
           />
+
+          <h3>Sound</h3>
+          <label className="aperture-slider aperture-volume-slider">
+            <span>
+              <span className="aperture-volume-label">
+                {restVolume === 0 ? (
+                  <VolumeX size={16} aria-hidden="true" />
+                ) : (
+                  <Volume2 size={16} aria-hidden="true" />
+                )}
+                Rest sounds
+              </span>
+              <b>{restVolume === 0 ? 'Muted' : `${restVolume}%`}</b>
+            </span>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              step="5"
+              value={restVolume}
+              aria-label="Rest sound volume"
+              aria-valuetext={
+                restVolume === 0 ? 'Muted' : `${restVolume} percent`
+              }
+              style={{
+                background: `linear-gradient(90deg, #14b892 0%, #a8f5e9 ${restVolume}%, rgba(255,255,255,0.09) ${restVolume}%, rgba(255,255,255,0.09) 100%)`,
+              }}
+              onChange={(event) => onRestVolume(Number(event.target.value))}
+            />
+            <small>Controls Eye Break’s own rest and return chimes only.</small>
+          </label>
 
           <h3>The desktop app</h3>
           <Toggle

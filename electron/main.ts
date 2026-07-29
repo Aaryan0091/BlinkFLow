@@ -21,7 +21,6 @@ import {
   TIMER_IPC_CHANNELS,
   type LaunchAtLoginState,
 } from './ipc-handlers.js'
-import { pauseBackgroundMedia } from './media-controller.js'
 import { selectRestOverlayDisplays } from './rest-overlay.js'
 import {
   buildContentSecurityPolicy,
@@ -404,7 +403,6 @@ function hideBreakWindows() {
 
 function notifyFocusEnded() {
   const timerState = timerEngine.getState()
-  void pauseBackgroundMedia()
   showBreakWindows()
 
   if (Notification.isSupported()) {

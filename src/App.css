@@ -687,6 +687,11 @@
 
 .rest-setting-heading > div { display: grid; gap: 2px; }
 .rest-setting-heading label { color: #dcefeb; font-size: 0.8rem; font-weight: 700; }
+.volume-setting .rest-setting-heading label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
 .rest-setting-heading span { color: #718f88; font-size: 0.66rem; }
 .rest-setting-heading output {
   min-width: 48px;

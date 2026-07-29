@@ -5,8 +5,59 @@
 
 type AudioContextConstructor = typeof AudioContext
 
+export const DEFAULT_REST_VOLUME = 60
+export const REST_VOLUME_STORAGE_KEY = 'eye-break-rest-volume'
+
 let audioContext: AudioContext | null = null
 let masterGain: GainNode | null = null
+let restVolume = DEFAULT_REST_VOLUME / 100
+
+export function normalizeRestVolume(value: number) {
+  if (!Number.isFinite(value)) return DEFAULT_REST_VOLUME
+  return Math.min(100, Math.max(0, Math.round(value)))
+}
+
+export function setRestVolume(value: number) {
+  const normalized = normalizeRestVolume(value)
+  restVolume = normalized / 100
+
+  if (audioContext && masterGain) {
+    masterGain.gain.cancelScheduledValues(audioContext.currentTime)
+    masterGain.gain.setTargetAtTime(
+      restVolume,
+      audioContext.currentTime,
+      0.015,
+    )
+  }
+
+  return normalized
+}
+
+export function loadRestVolumePreference() {
+  if (typeof window === 'undefined') return DEFAULT_REST_VOLUME
+
+  try {
+    return setRestVolume(
+      Number(window.localStorage.getItem(REST_VOLUME_STORAGE_KEY) ?? DEFAULT_REST_VOLUME),
+    )
+  } catch {
+    return setRestVolume(DEFAULT_REST_VOLUME)
+  }
+}
+
+export function saveRestVolumePreference(value: number) {
+  const normalized = setRestVolume(value)
+
+  if (typeof window !== 'undefined') {
+    try {
+      window.localStorage.setItem(REST_VOLUME_STORAGE_KEY, String(normalized))
+    } catch {
+      // Audio still updates when storage is unavailable.
+    }
+  }
+
+  return normalized
+}
 
 function ensureAudioContext() {
   if (typeof window === 'undefined') return null
@@ -21,7 +72,7 @@ function ensureAudioContext() {
   if (!audioContext) {
     audioContext = new AudioContextClass()
     masterGain = audioContext.createGain()
-    masterGain.gain.value = 0.6
+    masterGain.gain.value = restVolume
     masterGain.connect(audioContext.destination)
   }
 

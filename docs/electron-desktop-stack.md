@@ -2,7 +2,7 @@
 
 This document explains how Eye Break turns its React web interface into a native
 desktop application. It covers Electron, Electron Builder, the main process,
-desktop features, background-media control, IPC, and the current security model.
+desktop features, IPC, and the current security model.
 
 The descriptions below reflect the current project implementation rather than a
 generic Electron example.
@@ -16,15 +16,13 @@ generic Electron example.
 | TypeScript | Adds compile-time types to the renderer and desktop logic |
 | Electron | Provides native windows, tray controls, notifications, sounds, power events, and IPC |
 | Electron Builder | Packages the compiled project as installable desktop artifacts |
-| Media controller | Requests supported background players to pause when focus time ends |
-| Vitest | Tests timer, persistence, IPC, sleep/wake, and media-control logic |
+| Vitest | Tests timer, persistence, IPC, and sleep/wake logic |
 
 Key source files:
 
 - [`electron/main.ts`](../electron/main.ts) — Electron main process and native features
 - [`electron/preload.ts`](../electron/preload.ts) — restricted renderer bridge
 - [`electron/ipc-handlers.ts`](../electron/ipc-handlers.ts) — timer IPC channel registration
-- [`electron/media-controller.ts`](../electron/media-controller.ts) — background-media pausing
 - [`electron/timer-engine.ts`](../electron/timer-engine.ts) — timer state machine
 - [`src/App.tsx`](../src/App.tsx) — React web interface
 - [`src/electron.d.ts`](../src/electron.d.ts) — TypeScript definition for the preload API
@@ -375,109 +373,6 @@ running simultaneously. Electron documents this behavior in the
 
 ---
 
-## Background-media handling
-
-Background-media handling lives in
-[`electron/media-controller.ts`](../electron/media-controller.ts).
-
-It is triggered only when a focus period ends. A missing player or failed media
-command is deliberately prevented from blocking the alert, notification, or
-break overlay.
-
-### Pausing Apple Music and Spotify
-
-On macOS, Eye Break runs static AppleScript commands through `osascript`.
-
-Each command:
-
-1. Checks whether the application is already running.
-2. Checks whether its player state is `playing`.
-3. Calls the application's explicit `pause` command.
-
-Eye Break currently supports:
-
-- Apple Music
-- Spotify
-
-The scripts do not launch either player when it is absent.
-
-### Linux MPRIS support
-
-On Linux, Eye Break calls:
-
-```bash
-playerctl --all-players pause
-```
-
-`playerctl` communicates with compatible players through MPRIS. The
-[MPRIS specification](https://specifications.freedesktop.org/mpris/latest/Player_Interface.html)
-defines `Pause` as an idempotent action: already-paused media stays paused.
-
-`playerctl` must be installed and the media player must expose an MPRIS session.
-
-### Why explicit Pause is safer than Play/Pause
-
-An explicit Pause action has only one intended result:
-
-```text
-Playing → Paused
-Paused  → Paused
-Stopped → Stopped
-```
-
-A Play/Pause toggle can do the opposite of what Eye Break needs:
-
-```text
-Playing → Paused
-Paused  → Playing
-Stopped → Possibly playing
-```
-
-Therefore Eye Break never sends a blind media-key toggle. This prevents the
-break reminder from accidentally starting music that was already paused.
-
-### Unsupported media applications
-
-Electron does not provide a universal cross-platform API for pausing every
-application's audio.
-
-The current controller does not guarantee control over:
-
-- Media playing inside arbitrary browser tabs
-- Games
-- Video-conference applications
-- Players without AppleScript or MPRIS control
-- Protected or remote playback sessions
-- Windows media sessions, which are not implemented yet
-
-The break overlay and notification still work when media cannot be paused.
-
-### macOS automation permissions
-
-The first time Eye Break controls Apple Music or Spotify, macOS may request
-Automation permission. The user controls this permission in:
-
-```text
-System Settings → Privacy & Security → Automation
-```
-
-If permission is denied, the media command fails silently and the break flow
-continues. Eye Break does not attempt to bypass macOS privacy controls.
-
-### Error handling when a player is unavailable
-
-Media commands run independently with `Promise.all`. Each command catches its
-own failure.
-
-This design ensures:
-
-- Spotify being absent does not prevent Apple Music from pausing.
-- A denied permission does not prevent the overlay.
-- A missing Linux `playerctl` command does not crash Electron.
-- Media-control latency does not delay the break screen.
-
----
-
 ## Electron IPC
 
 ### What IPC means
@@ -731,36 +626,16 @@ reduces the chance of leaving partially written JSON after interruption.
 The snapshot is plain JSON and is not encrypted. Sensitive data should not be
 added to this file without a separate security design.
 
-### AppleScript permissions
+### No media automation or shell control
 
-AppleScript is used only to request Pause from Apple Music and Spotify.
-
-Security properties:
-
-- Scripts are static application code.
-- No renderer or user text is inserted into a script.
-- macOS controls Automation permission.
-- Permission failure is treated as non-fatal.
-- The application does not request broader Accessibility control.
-
-Users can revoke Automation access at any time in macOS System Settings.
-
-### Avoiding arbitrary shell commands
-
-The media controller uses Node's `execFile()`:
-
-```ts
-execFile('osascript', ['-e', staticScript])
-```
-
-This is safer than constructing a shell command string because `execFile`
-executes a specific binary with an argument array and does not require shell
-parsing.
+Eye Break does not control Spotify, Apple Music, browser playback, or other
+media applications. It does not run AppleScript, `playerctl`, media-key
+commands, or shell commands when a rest starts. Therefore the application does
+not need macOS Automation permission for media control.
 
 The project must continue to avoid:
 
 - Passing renderer values into executable names
-- Concatenating user input into AppleScript
 - Executing arbitrary channel payloads
 - Using `exec()` for dynamically built command strings
 - Exposing command execution through the preload API
@@ -783,7 +658,6 @@ Complete these items before public distribution:
 | [`tests/timer-engine.test.ts`](../tests/timer-engine.test.ts) | Timer, Auto Mode, restore, and wake behavior |
 | [`tests/ipc-handlers.test.ts`](../tests/ipc-handlers.test.ts) | IPC sender and argument validation |
 | [`tests/security.test.ts`](../tests/security.test.ts) | Trusted renderer URLs and production CSP |
-| [`tests/media-controller.test.ts`](../tests/media-controller.test.ts) | Safe Pause commands and error handling |
 | [`tests/timer-persistence.test.ts`](../tests/timer-persistence.test.ts) | Atomic save, restore, and corrupted data |
 
 Run all tests with:

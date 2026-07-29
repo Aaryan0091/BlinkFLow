@@ -11,10 +11,17 @@ import {
   ShieldCheck,
   Square,
   TimerReset,
+  Volume2,
+  VolumeX,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { BreakOverlay } from './BreakOverlay'
-import { playRestCue, unlockRestAudio } from './rest-audio'
+import {
+  loadRestVolumePreference,
+  playRestCue,
+  saveRestVolumePreference,
+  unlockRestAudio,
+} from './rest-audio'
 import './App.css'
 
 type TimerPhase = 'idle' | 'focus' | 'break' | 'paused'
@@ -153,6 +160,7 @@ function App() {
   })
   const [isUpdatingLaunchAtLogin, setIsUpdatingLaunchAtLogin] = useState(false)
   const [launchAtLoginError, setLaunchAtLoginError] = useState('')
+  const [restVolume, setRestVolume] = useState(loadRestVolumePreference)
   const [now, setNow] = useState(Date.now())
   const wasInBreak = useRef(false)
   const prefersReducedMotion = useReducedMotion()
@@ -713,6 +721,47 @@ function App() {
               <div className="rest-range-values" aria-hidden="true">
                 <span>5s</span>
                 <span>120s</span>
+              </div>
+            </div>
+            <div className="rest-setting volume-setting">
+              <div className="rest-setting-heading">
+                <div>
+                  <label htmlFor="rest-volume">
+                    {restVolume === 0 ? (
+                      <VolumeX size={14} aria-hidden="true" />
+                    ) : (
+                      <Volume2 size={14} aria-hidden="true" />
+                    )}
+                    Rest sounds
+                  </label>
+                  <span>Eye Break’s own chimes only</span>
+                </div>
+                <output htmlFor="rest-volume">
+                  {restVolume === 0 ? 'Muted' : `${restVolume}%`}
+                </output>
+              </div>
+              <input
+                id="rest-volume"
+                type="range"
+                min={0}
+                max={100}
+                step={5}
+                value={restVolume}
+                aria-valuetext={
+                  restVolume === 0 ? 'Muted' : `${restVolume} percent`
+                }
+                style={{
+                  background: `linear-gradient(90deg, #a8f5e9 0%, #4fe1ca ${restVolume}%, rgba(168, 245, 233, 0.1) ${restVolume}%, rgba(168, 245, 233, 0.1) 100%)`,
+                }}
+                onChange={(event) =>
+                  setRestVolume(
+                    saveRestVolumePreference(Number(event.currentTarget.value)),
+                  )
+                }
+              />
+              <div className="rest-range-values" aria-hidden="true">
+                <span>Mute</span>
+                <span>100%</span>
               </div>
             </div>
             <div className="startup-setting">
