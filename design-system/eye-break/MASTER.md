@@ -1,229 +1,129 @@
-# Design System Master File
+# Eye Break Design System
 
-> **LOGIC:** When building a specific page, first check `design-system/pages/[page-name].md`.
-> If that file exists, its rules **override** this Master file.
-> If not, strictly follow the rules below.
+This document records the visual rules shared by the current Aperture
+interface, the preserved Eye Break interface, and the native rest overlay.
+It describes the implemented product rather than a generic UI template.
 
----
+## Product character
 
-**Project:** Eye Break
-**Generated:** 2026-07-22 12:34:18
-**Category:** Desktop Productivity / Eye Wellness
-**Design Dials:** Variance 7/10 (Balanced / Modern) | Motion 7/10 (Standard) | Density 4/10 (Standard)
+Eye Break should feel calm, focused, restorative, and trustworthy. It is a
+desktop wellness utility, so the interface should remain quiet during focus and
+be unmistakable when a rest begins.
 
----
+## Color system
 
-## Global Rules
+| Role | Value | Usage |
+| --- | --- | --- |
+| Background | `#06110f` | Root application background |
+| Deep surface | `#071815` | Primary dark surface and application icon |
+| Primary mint | `#50ddc3` | Progress and active states |
+| Secondary mint | `#159f8b` | Supporting gradients |
+| Highlight | `#a8f5e9` | Primary actions, selected controls, and rest timer |
+| Strong text | `#f2faf7` | Headings and important values |
+| Body text | `#d7e7e3` | Standard readable copy |
+| Muted text | `#829b94` | Secondary labels |
+| Warm accent | `#d8b477` | Limited decorative contrast |
+| Subtle border | `rgba(168, 245, 233, 0.12)` | Glass and card borders |
 
-### Color Palette
+`#a8f5e9` is the defining accent. Use it deliberately for live progress,
+selected settings, primary actions, and the eye-rest cue.
 
-| Role | Hex | CSS Variable |
-|------|-----|--------------|
-| Primary | `#50DDC3` | `--color-primary` |
-| On Primary | `#06241F` | `--color-on-primary` |
-| Secondary | `#159F8B` | `--color-secondary` |
-| Highlight/CTA | `#A8F5E9` | `--color-highlight` |
-| Background | `#071815` | `--color-background` |
-| Foreground | `#F2FFFC` | `--color-foreground` |
-| Muted | `#78958E` | `--color-muted` |
-| Border | `rgba(168,245,233,0.12)` | `--color-border` |
-| Warning | `#E4BA7B` | `--color-warning` |
-| Ring | `#A8F5E9` | `--color-ring` |
+## Typography
 
-**Color Notes:** Deep forest glass surfaces with restorative mint highlights. `#A8F5E9` is reserved for primary actions, live progress, and the 20-foot reset cue.
+- **Display:** Lora Variable
+- **Interface and body:** Raleway Variable
+- Both font families are bundled locally through Fontsource.
+- Timers and numeric metrics use tabular figures to prevent visual movement.
+- Body copy should remain concise and use comfortable line height.
 
-### Typography
+## Layout
 
-- **Heading Font:** Lora
-- **Body Font:** Raleway
-- **Mood:** calm, wellness, health, relaxing, natural, organic
-- **Font source:** Locally bundled Fontsource variable packages
+- The dashboard is a fixed desktop composition without page-level scrolling.
+- The Preferences panel owns its internal vertical scrolling.
+- The minimum native window size is `1100 × 760`.
+- Spacing follows a 4/8-pixel rhythm.
+- Important actions use a minimum 44-pixel interactive height.
+- Multi-display rest windows always fill their assigned display.
 
-**CSS Import:**
-```css
-@import '@fontsource-variable/lora/wght.css';
-@import '@fontsource-variable/raleway/wght.css';
-```
+## Surfaces
 
-### Spacing Variables
+- Use deep green-black surfaces with restrained translucent borders.
+- Blur is reserved for layered panels and modal separation.
+- Shadows should be broad and low-opacity, not sharp or decorative.
+- Avoid stacking multiple competing accent colors in one component.
 
-*Density: 4/10 — Standard*
-
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--space-xs` | `4px` / `0.25rem` | Tight gaps |
-| `--space-sm` | `8px` / `0.5rem` | Icon gaps, inline spacing |
-| `--space-md` | `16px` / `1rem` | Standard padding |
-| `--space-lg` | `24px` / `1.5rem` | Section padding |
-| `--space-xl` | `32px` / `2rem` | Large gaps |
-| `--space-2xl` | `48px` / `3rem` | Section margins |
-| `--space-3xl` | `64px` / `4rem` | Hero padding |
-
-### Shadow Depths
-
-| Level | Value | Usage |
-|-------|-------|-------|
-| `--shadow-sm` | `0 1px 2px rgba(0,0,0,0.05)` | Subtle lift |
-| `--shadow-md` | `0 4px 6px rgba(0,0,0,0.1)` | Cards, buttons |
-| `--shadow-lg` | `0 10px 15px rgba(0,0,0,0.1)` | Modals, dropdowns |
-| `--shadow-xl` | `0 20px 25px rgba(0,0,0,0.15)` | Hero images, featured cards |
-
----
-
-## Component Specs
+## Components
 
 ### Buttons
 
-```css
-/* Primary Button */
-.btn-primary {
-  background: #A8F5E9;
-  color: #06241F;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-weight: 600;
-  transition: all 200ms ease;
-  cursor: pointer;
-}
+- Use semantic `<button>` elements.
+- Primary actions use the mint highlight with dark text.
+- Secondary actions use quiet translucent surfaces.
+- Icon-only controls require accessible names.
+- Hover, pressed, focus, and disabled states must remain visually distinct.
+- Interaction feedback must not shift surrounding layout.
 
-.btn-primary:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
-}
+### Settings
 
-/* Secondary Button */
-.btn-secondary {
-  background: transparent;
-  color: #D8EBE7;
-  border: 1px solid rgba(168,245,233,0.12);
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-weight: 600;
-  transition: all 200ms ease;
-  cursor: pointer;
-}
-```
+- Boolean preferences use switches.
+- Mutually exclusive choices use accessible radio groups.
+- Selected options combine text, iconography, and color; color is never the
+  only state indicator.
+- Asynchronous native settings disable repeated interaction while saving.
 
-### Cards
+### Timer
 
-```css
-.card {
-  background: linear-gradient(145deg, rgba(19,55,48,.78), rgba(8,32,27,.82));
-  border: 1px solid rgba(168,245,233,.12);
-  border-radius: 28px;
-  padding: 24px;
-  box-shadow: var(--shadow-md);
-  transition: all 200ms ease;
-  cursor: pointer;
-}
+- The eye is the central progress metaphor.
+- Remaining and elapsed time use stable tabular numerals.
+- The outer progress control remains directly draggable.
+- Eye strain increases gradually with elapsed focus time and clears during rest.
 
-.card:hover {
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-2px);
-}
-```
+### Rest overlay
 
-### Inputs
+The rest overlay supports three appearance modes:
 
-```css
-.input {
-  padding: 12px 16px;
-  border: 1px solid #E2E8F0;
-  border-radius: 8px;
-  font-size: 16px;
-  transition: border-color 200ms ease;
-}
+- **Ambient:** calming field, circular countdown, guidance, ripples, and controls.
+- **Pitch black:** no visible content; sound, countdown, and Escape remain active.
+- **Black + timer:** black background with the centered circular countdown and
+  ripple effect.
 
-.input:focus {
-  border-color: #A8F5E9;
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(168,245,233,.2);
-}
-```
-
-### Modals
-
-```css
-.modal-overlay {
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-}
-
-.modal {
-  background: white;
-  border-radius: 16px;
-  padding: 32px;
-  box-shadow: var(--shadow-xl);
-  max-width: 500px;
-  width: 90%;
-}
-```
-
----
-
-## Style Guidelines
-
-**Style:** Glassmorphism
-
-**Keywords:** Frosted glass, transparent, blurred background, layered, vibrant background, light source, depth, multi-layer
-
-**Best For:** Modern SaaS, financial dashboards, high-end corporate, lifestyle apps, modal overlays, navigation
-
-**Key Effects:** Backdrop blur (10-20px), subtle border (1px solid rgba white 0.2), light reflection, Z-depth
-
-### Page Pattern
-
-**Pattern Name:** Webinar Registration
-
-- **Conversion Strategy:** Limited seats logic. 'Live' indicator. Auto-fill timezone.
-- **CTA Placement:** Hero (Right side form) + Bottom anchor
-- **Section Order:** 1. Hero (Topic + Timer + Form), 2. What you'll learn, 3. Speaker Bio, 4. Urgency/Bonuses, 5. Form (again)
-
----
+All appearance modes respect reduced-motion preferences. Every mode supports
+Escape as an immediate exit route.
 
 ## Motion
 
-**Stagger List** (Standard) — Trigger: load or scroll | Duration: 300-450ms | Easing: `back.out(1.4)`
+- Use transform and opacity for interface transitions.
+- Standard interactions should finish within 150–300 ms.
+- Larger panel transitions may use a short spring.
+- Continuous motion is limited to meaningful timer, eye, blink, and rest cues.
+- `prefers-reduced-motion` must disable nonessential repeated animation.
 
-```js
-gsap.from('.grid-item', { opacity: 0, scale: 0.92, y: 16, duration: 0.4, stagger: { each: 0.06, from: 'start', grid: 'auto' }, ease: 'back.out(1.4)' });
-```
+## Accessibility
 
-**Framework notes:** grid: 'auto' lets GSAP infer rows/columns from a CSS grid layout for a natural wave stagger
+- Maintain WCAG AA contrast for text and controls.
+- Preserve visible `:focus-visible` outlines.
+- Keep keyboard navigation in visual order.
+- Do not rely on hover or dragging as the only interaction method.
+- Dialogs need semantic roles, labels, and Escape routes.
+- Decorative icons must be hidden from assistive technology.
+- Countdown changes should be announced politely without stealing focus.
 
-- ✅ Combine with from: 'center' for a bento-grid layout to draw the eye inward first
-- ❌ Don't use back.out on dense data tables; the overshoot reads as sloppy on informational UI
-- ⚡ Group DOM writes; avoid interleaving layout reads (getBoundingClientRect) between staggered tweens
+## Asset rules
 
----
+- Use Lucide for interface icons.
+- Use the Eye Break eye mark for the application, tray, and favicon.
+- Do not use emojis as structural icons.
+- Do not add remote fonts, remote images, or visual assets that weaken offline
+  operation or the production Content Security Policy.
 
-## Anti-Patterns (Do NOT Use)
+## Pre-delivery checklist
 
-- ❌ Cheap visuals
-- ❌ Fast animations
-
-### Additional Forbidden Patterns
-
-- ❌ **Emojis as icons** — Use SVG icons (Heroicons, Lucide, Simple Icons)
-- ❌ **Missing cursor:pointer** — All clickable elements must have cursor:pointer
-- ❌ **Layout-shifting hovers** — Avoid scale transforms that shift layout
-- ❌ **Low contrast text** — Maintain 4.5:1 minimum contrast ratio
-- ❌ **Instant state changes** — Always use transitions (150-300ms)
-- ❌ **Invisible focus states** — Focus states must be visible for a11y
-
----
-
-## Pre-Delivery Checklist
-
-Before delivering any UI code, verify:
-
-- [ ] No emojis used as icons (use SVG instead)
-- [ ] All icons from consistent icon set (Heroicons/Lucide)
-- [ ] `cursor-pointer` on all clickable elements
-- [ ] Hover states with smooth transitions (150-300ms)
-- [ ] Light mode: text contrast 4.5:1 minimum
-- [ ] Focus states visible for keyboard navigation
-- [ ] `prefers-reduced-motion` respected
-- [ ] Responsive: 375px, 768px, 1024px, 1440px
-- [ ] No content hidden behind fixed navbars
-- [ ] No horizontal scroll on mobile
+- [ ] No template or starter assets remain.
+- [ ] No page-level scrolling or horizontal overflow is introduced.
+- [ ] Primary controls have complete hover, pressed, focus, and disabled states.
+- [ ] Keyboard shortcuts do not fire while editing an input.
+- [ ] Reduced motion is respected.
+- [ ] Ambient, Pitch black, and Black + timer modes render correctly.
+- [ ] Main-display and all-display overlay placement is verified.
+- [ ] Text and icon contrast remain accessible.
+- [ ] Production build, lint, tests, and native overlay tests pass.

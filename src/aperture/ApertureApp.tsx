@@ -18,6 +18,12 @@ import {
   X,
 } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import type {
+  RestAppearanceMode,
+  RestOverlayMode,
+  TimerState,
+} from '../../shared/timer-contract'
+import { browserFallback, DEFAULT_TIMER_STATE } from '../browser-fallback'
 import {
   loadRestVolumePreference,
   playRestCue,
@@ -26,84 +32,6 @@ import {
 } from '../rest-audio'
 import { IrisTimer } from './IrisTimer'
 import './aperture.css'
-
-type TimerPhase = 'idle' | 'focus' | 'break' | 'paused'
-type RestOverlayMode = 'none' | 'primary-display' | 'all-displays'
-type RestAppearanceMode = 'ambient' | 'black' | 'black-timer'
-
-type TimerState = {
-  phase: TimerPhase
-  isRunning: boolean
-  isPaused: boolean
-  focusDurationMs: number
-  breakDurationMs: number
-  remainingMs: number
-  elapsedFocusMs: number
-  completedFocusSessions: number
-  totalScreenTimeMs: number
-  totalEyeRestTimeMs: number
-  startedAt: number | null
-  breakStartedAt: number | null
-  autoMode: boolean
-  restOverlayMode: RestOverlayMode
-  restAppearanceMode: RestAppearanceMode
-}
-
-const DEFAULT_STATE: TimerState = {
-  phase: 'idle',
-  isRunning: false,
-  isPaused: false,
-  focusDurationMs: 20 * 60 * 1000,
-  breakDurationMs: 20 * 1000,
-  remainingMs: 20 * 60 * 1000,
-  elapsedFocusMs: 0,
-  completedFocusSessions: 0,
-  totalScreenTimeMs: 0,
-  totalEyeRestTimeMs: 0,
-  startedAt: null,
-  breakStartedAt: null,
-  autoMode: false,
-  restOverlayMode: 'all-displays',
-  restAppearanceMode: 'ambient',
-}
-
-const browserFallback = {
-  getState: async () => DEFAULT_STATE,
-  start: async () => DEFAULT_STATE,
-  pause: async () => DEFAULT_STATE,
-  resume: async () => DEFAULT_STATE,
-  stop: async () => DEFAULT_STATE,
-  restNow: async () => DEFAULT_STATE,
-  endBreak: async () => DEFAULT_STATE,
-  setRemaining: async () => DEFAULT_STATE,
-  setBreakDuration: async (durationMs: number) => ({
-    ...DEFAULT_STATE,
-    breakDurationMs: durationMs,
-  }),
-  setAutoMode: async (enabled: boolean) => ({
-    ...DEFAULT_STATE,
-    autoMode: enabled,
-  }),
-  setRestOverlayMode: async (mode: RestOverlayMode) => ({
-    ...DEFAULT_STATE,
-    restOverlayMode: mode,
-  }),
-  setRestAppearanceMode: async (mode: RestAppearanceMode) => ({
-    ...DEFAULT_STATE,
-    restAppearanceMode: mode,
-  }),
-  getLaunchAtLogin: async () => ({
-    supported: false,
-    enabled: false,
-    status: 'available-after-install' as const,
-  }),
-  setLaunchAtLogin: async () => ({
-    supported: false,
-    enabled: false,
-    status: 'available-after-install' as const,
-  }),
-  onStateChange: async () => () => undefined,
-}
 
 function atTime(remainingMs: number) {
   return new Date(Date.now() + remainingMs).toLocaleTimeString([], {
@@ -124,7 +52,7 @@ function formatTotalTime(totalMs: number) {
 
 export default function ApertureApp() {
   const eyeBreak = window.eyeBreak ?? browserFallback
-  const [timer, setTimer] = useState<TimerState>(DEFAULT_STATE)
+  const [timer, setTimer] = useState<TimerState>(DEFAULT_TIMER_STATE)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [launchAtLogin, setLaunchAtLogin] = useState(false)
   const [restOverlayModeSaving, setRestOverlayModeSaving] = useState(false)
@@ -133,7 +61,7 @@ export default function ApertureApp() {
   const wasInBreak = useRef(false)
 
   useEffect(() => {
-    const subscription = eyeBreak.onStateChange(setTimer)
+    const subscription = eyeBreak.onStateChange((state) => setTimer(state))
     void eyeBreak.getState().then(setTimer)
     void eyeBreak.getLaunchAtLogin().then((state) => setLaunchAtLogin(state.enabled))
     return () => {
@@ -463,20 +391,29 @@ function StatsCard({
   totalScreenTimeMs: number
   totalEyeRestTimeMs: number
 }) {
-  const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+  const milestones = [1, 2, 3, 4, 5, 6, 7]
   return (
     <section className="aperture-stats">
-      <span>This week</span>
+      <span>Session progress</span>
       <p>
-        <strong>{count}</strong> rests today
+        <strong>{count}</strong> rests completed
       </p>
-      <div className="aperture-bars" aria-label={`${count} rests completed today`}>
-        {days.map((day, index) => (
-          <div key={`${day}-${index}`}>
-            <i className={index === 6 ? 'today' : ''} style={{ height: index === 6 && count ? '100%' : '4%' }} />
-            <span>{day}</span>
-          </div>
-        ))}
+      <div
+        className="aperture-bars"
+        aria-label={`${count} rests completed this session`}
+      >
+        {milestones.map((milestone) => {
+          const completed = count >= milestone
+          return (
+            <div key={milestone}>
+              <i
+                className={completed ? 'completed' : undefined}
+                style={{ height: completed ? `${30 + milestone * 10}%` : '4%' }}
+              />
+              <span>{milestone}</span>
+            </div>
+          )
+        })}
       </div>
       <div className="aperture-total-metrics">
         <div>
@@ -788,12 +725,6 @@ function RestOverlayOption({
       className={selected ? 'active' : undefined}
       disabled={disabled}
       onClick={() => onSelect(mode)}
-      onKeyDown={(event) => {
-        if (event.key === ' ' || event.key === 'Enter') {
-          event.preventDefault()
-          onSelect(mode)
-        }
-      }}
     >
       <span className="aperture-overlay-icon">{icon}</span>
       <span>

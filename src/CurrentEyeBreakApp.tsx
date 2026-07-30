@@ -15,6 +15,12 @@ import {
   VolumeX,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import type {
+  LaunchAtLoginState,
+  TimerPhase,
+  TimerState,
+} from '../shared/timer-contract'
+import { browserFallback, DEFAULT_TIMER_STATE } from './browser-fallback'
 import { BreakOverlay } from './BreakOverlay'
 import {
   loadRestVolumePreference,
@@ -23,113 +29,6 @@ import {
   unlockRestAudio,
 } from './rest-audio'
 import './App.css'
-
-type TimerPhase = 'idle' | 'focus' | 'break' | 'paused'
-type RestOverlayMode = 'none' | 'primary-display' | 'all-displays'
-type RestAppearanceMode = 'ambient' | 'black' | 'black-timer'
-
-type TimerState = {
-  phase: TimerPhase
-  isRunning: boolean
-  isPaused: boolean
-  focusDurationMs: number
-  breakDurationMs: number
-  remainingMs: number
-  elapsedFocusMs: number
-  completedFocusSessions: number
-  totalScreenTimeMs: number
-  totalEyeRestTimeMs: number
-  startedAt: number | null
-  breakStartedAt: number | null
-  autoMode: boolean
-  restOverlayMode: RestOverlayMode
-  restAppearanceMode: RestAppearanceMode
-}
-
-type LaunchAtLoginState = {
-  supported: boolean
-  enabled: boolean
-  status:
-    | 'enabled'
-    | 'disabled'
-    | 'requires-approval'
-    | 'available-after-install'
-    | 'unsupported'
-}
-
-const defaultState: TimerState = {
-  phase: 'idle',
-  isRunning: false,
-  isPaused: false,
-  focusDurationMs: 20 * 60 * 1000,
-  breakDurationMs: 20 * 1000,
-  remainingMs: 20 * 60 * 1000,
-  elapsedFocusMs: 0,
-  completedFocusSessions: 0,
-  totalScreenTimeMs: 0,
-  totalEyeRestTimeMs: 0,
-  startedAt: null,
-  breakStartedAt: null,
-  autoMode: false,
-  restOverlayMode: 'all-displays',
-  restAppearanceMode: 'ambient',
-}
-
-const browserFallback = {
-  async getState() {
-    return defaultState
-  },
-  async start() {
-    return defaultState
-  },
-  async pause() {
-    return defaultState
-  },
-  async resume() {
-    return defaultState
-  },
-  async stop() {
-    return defaultState
-  },
-  async restNow() {
-    return defaultState
-  },
-  async endBreak() {
-    return defaultState
-  },
-  async setRemaining() {
-    return defaultState
-  },
-  async setBreakDuration(durationMs: number) {
-    return { ...defaultState, breakDurationMs: durationMs }
-  },
-  async setAutoMode(enabled: boolean) {
-    return { ...defaultState, autoMode: enabled }
-  },
-  async setRestOverlayMode(mode: RestOverlayMode) {
-    return { ...defaultState, restOverlayMode: mode }
-  },
-  async setRestAppearanceMode(mode: RestAppearanceMode) {
-    return { ...defaultState, restAppearanceMode: mode }
-  },
-  async getLaunchAtLogin(): Promise<LaunchAtLoginState> {
-    return {
-      supported: false,
-      enabled: false,
-      status: 'available-after-install',
-    }
-  },
-  async setLaunchAtLogin(): Promise<LaunchAtLoginState> {
-    return {
-      supported: false,
-      enabled: false,
-      status: 'available-after-install',
-    }
-  },
-  async onStateChange() {
-    return () => undefined
-  },
-}
 
 const phaseCopy: Record<TimerPhase, { eyebrow: string; title: string; description: string }> = {
   idle: {
@@ -164,7 +63,7 @@ function formatClock(totalMs: number) {
 function App() {
   const eyeBreak = window.eyeBreak ?? browserFallback
   const isBreakWindow = new URLSearchParams(window.location.search).get('mode') === 'break'
-  const [timer, setTimer] = useState<TimerState>(defaultState)
+  const [timer, setTimer] = useState<TimerState>(DEFAULT_TIMER_STATE)
   const [launchAtLogin, setLaunchAtLogin] = useState<LaunchAtLoginState>({
     supported: false,
     enabled: false,
@@ -677,11 +576,30 @@ function App() {
               <BellRing size={20} aria-hidden="true" />
             </div>
             <strong className="next-time">{nextBreak}</strong>
-            <p className="muted-copy">A native alert and full-screen reset will meet you wherever you are working.</p>
+            <p className="muted-copy">
+              A local chime and full-screen reset will meet you wherever you
+              are working.
+            </p>
 
             <div className="ritual-timeline">
-              <RitualStep icon={Laptop} title="Focus" meta="20 minutes" state={timer.phase === 'focus' ? 'active' : timer.completedFocusSessions > 0 ? 'done' : 'upcoming'} />
-              <RitualStep icon={Eye} title="Look far away" meta={`${restSeconds} seconds`} state={timer.phase === 'break' ? 'active' : 'upcoming'} />
+              <RitualStep
+                icon={Laptop}
+                title="Focus"
+                meta="20 minutes"
+                state={
+                  timer.phase === 'focus'
+                    ? 'active'
+                    : timer.completedFocusSessions > 0
+                      ? 'done'
+                      : 'upcoming'
+                }
+              />
+              <RitualStep
+                icon={Eye}
+                title="Look far away"
+                meta={`${restSeconds} seconds`}
+                state={timer.phase === 'break' ? 'active' : 'upcoming'}
+              />
               <RitualStep
                 icon={TimerReset}
                 title="Begin again"

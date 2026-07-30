@@ -1,19 +1,29 @@
 {
-  "name": "eye-strain",
+  "name": "eye-break",
   "private": true,
   "version": "1.0.0",
   "description": "A calm desktop timer for healthier screen-break habits.",
+  "author": "Eye Break Contributors",
   "type": "module",
   "main": "dist-electron/main.js",
+  "engines": {
+    "node": ">=22.12.0",
+    "npm": ">=10"
+  },
+  "packageManager": "npm@11.12.0",
   "scripts": {
     "dev": "vite",
-    "dev:web": "vite",
+    "dev:web": "vite --mode web",
     "build": "tsc -b && vite build",
     "package": "npm run build && electron-builder --dir",
     "dist": "npm run build && electron-builder",
+    "check": "npm run lint && npm test && npm run build",
     "lint": "oxlint",
     "test": "vitest run",
+    "test:native-overlays": "vitest run tests/rest-overlay.test.ts tests/rest-overlay-native.test.ts",
     "test:watch": "vitest",
+    "audit:production": "npm audit --omit=dev",
+    "audit:all": "npm audit",
     "preview": "vite preview",
     "21st:search": "21st search",
     "21st:add": "21st add"
@@ -28,24 +38,24 @@
   },
   "devDependencies": {
     "@21st-dev/cli": "^1.7.2",
+    "@electron/fuses": "^2.1.3",
     "@types/node": "^24.13.2",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",
-    "cross-env": "^10.1.0",
     "electron": "^43.2.0",
     "electron-builder": "^26.15.3",
     "oxlint": "^1.71.0",
     "typescript": "~6.0.2",
     "vite": "^8.1.1",
     "vite-plugin-electron": "^1.1.0",
-    "vite-plugin-electron-renderer": "^1.0.0",
     "vitest": "^4.1.10"
   },
   "build": {
     "appId": "com.eyebreak.desktop",
     "productName": "Eye Break",
     "asar": true,
+    "afterPack": "build/after-pack.cjs",
     "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "directories": {
       "output": "release",

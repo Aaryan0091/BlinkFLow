@@ -318,7 +318,7 @@
   background: rgba(255, 255, 255, 0.1);
 }
 
-.aperture-bars i.today {
+.aperture-bars i.completed {
   background: linear-gradient(0deg, rgba(109, 92, 246, 0.7), #a89dff);
   box-shadow: 0 0 18px -5px #8b7cff;
 }
@@ -329,7 +329,7 @@
   font-weight: 500;
 }
 
-.aperture-bars div:last-child span {
+.aperture-bars i.completed + span {
   color: #c9c4ff;
 }
 

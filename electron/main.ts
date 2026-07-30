@@ -2,7 +2,6 @@ import {
   app,
   BrowserWindow,
   Menu,
-  Notification,
   Tray,
   ipcMain,
   nativeImage,
@@ -21,7 +20,11 @@ import {
   TIMER_IPC_CHANNELS,
   type LaunchAtLoginState,
 } from './ipc-handlers.js'
-import { selectRestOverlayDisplays } from './rest-overlay.js'
+import {
+  configureRestOverlayWindow,
+  createRestOverlayWindowOptions,
+  synchronizeRestOverlayWindows,
+} from './rest-overlay.js'
 import {
   buildContentSecurityPolicy,
   createRendererUrlValidator,
@@ -234,25 +237,12 @@ function clearTicker() {
 }
 
 function configureBreakWindow(window: BrowserWindow, display: Display) {
-  if (process.platform === 'darwin' && window.isSimpleFullScreen()) {
-    const currentDisplay = screen.getDisplayMatching(window.getBounds())
-    if (currentDisplay.id !== display.id) {
-      window.setSimpleFullScreen(false)
-    }
-  }
-
-  if (process.platform !== 'darwin' || !window.isSimpleFullScreen()) {
-    window.setBounds(display.bounds, false)
-  }
-
-  window.setAlwaysOnTop(true, 'screen-saver', 1)
-  window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
-
-  if (process.platform === 'darwin') {
-    if (!window.isSimpleFullScreen()) window.setSimpleFullScreen(true)
-  } else if (!window.isFullScreen()) {
-    window.setFullScreen(true)
-  }
+  configureRestOverlayWindow(
+    window,
+    display,
+    process.platform,
+    (bounds) => screen.getDisplayMatching(bounds),
+  )
 }
 
 function getPriorityDisplayId() {
@@ -264,28 +254,13 @@ function getPriorityDisplayId() {
 }
 
 function createBreakWindow(display: Display) {
-  const window = new BrowserWindow({
-    ...display.bounds,
-    frame: false,
-    transparent: false,
-    backgroundColor: '#04060b',
-    alwaysOnTop: true,
-    focusable: true,
-    fullscreenable: true,
-    hasShadow: false,
-    skipTaskbar: true,
-    resizable: false,
-    movable: false,
-    show: false,
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.cjs'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-    },
-  })
+  const window = new BrowserWindow(
+    createRestOverlayWindowOptions(
+      display,
+      path.join(__dirname, 'preload.cjs'),
+    ),
+  )
 
-  breakWindows.set(display.id, window)
   secureWebContents(window.webContents)
   configureBreakWindow(window, display)
 
@@ -327,33 +302,15 @@ function createBreakWindow(display: Display) {
 }
 
 function syncBreakWindows() {
-  const displays = selectRestOverlayDisplays(
-    timerEngine.getState().restOverlayMode,
-    screen.getAllDisplays(),
-    screen.getPrimaryDisplay(),
-  )
-  const targetDisplayIds = new Set(displays.map((display) => display.id))
-
-  for (const [displayId, window] of breakWindows) {
-    if (!targetDisplayIds.has(displayId)) {
-      window.destroy()
-      breakWindows.delete(displayId)
-    }
-  }
-
-  for (const display of displays) {
-    let window = breakWindows.get(display.id)
-    if (
-      window &&
-      screen.getDisplayMatching(window.getBounds()).id !== display.id
-    ) {
-      window.destroy()
-      breakWindows.delete(display.id)
-      window = undefined
-    }
-    window ??= createBreakWindow(display)
-    configureBreakWindow(window, display)
-  }
+  synchronizeRestOverlayWindows({
+    mode: timerEngine.getState().restOverlayMode,
+    displays: screen.getAllDisplays(),
+    primaryDisplay: screen.getPrimaryDisplay(),
+    windows: breakWindows,
+    getDisplayMatching: (bounds) => screen.getDisplayMatching(bounds),
+    createWindow: createBreakWindow,
+    configureWindow: configureBreakWindow,
+  })
 }
 
 function bringBreakWindowsForward() {
@@ -401,23 +358,13 @@ function hideBreakWindows() {
   }
 }
 
-function notifyFocusEnded() {
-  const timerState = timerEngine.getState()
+function showFocusEndedRest() {
   showBreakWindows()
-
-  if (Notification.isSupported()) {
-    const breakSeconds = Math.round(timerState.breakDurationMs / 1000)
-    new Notification({
-      title: 'Eye Break',
-      body: `It has been 20 minutes. Stop looking at your screen for ${breakSeconds} seconds.`,
-      silent: true,
-    }).show()
-  }
 }
 
 function handleTimerTransition(transition: TimerTransition) {
   if (transition === 'focus-ended') {
-    notifyFocusEnded()
+    showFocusEndedRest()
     return
   }
 
@@ -518,7 +465,7 @@ function restNow() {
   const timerState = timerEngine.restNow()
 
   if (!wasAlreadyInBreak && timerEngine.shouldShowBreak()) {
-    notifyFocusEnded()
+    showFocusEndedRest()
     resumeTimerInterval()
   }
 

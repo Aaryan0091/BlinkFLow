@@ -14,9 +14,10 @@ generic Electron example.
 | React | Renders the timer, controls, eye visualization, intro, and break screen |
 | Vite | Builds the React renderer and Electron entry points |
 | TypeScript | Adds compile-time types to the renderer and desktop logic |
-| Electron | Provides native windows, tray controls, notifications, sounds, power events, and IPC |
+| Electron | Provides native windows, tray controls, power events, local storage, and IPC |
 | Electron Builder | Packages the compiled project as installable desktop artifacts |
-| Vitest | Tests timer, persistence, IPC, and sleep/wake logic |
+| Electron Fuses | Locks unsafe runtime capabilities in packaged binaries |
+| Vitest | Tests timer, persistence, IPC, security, and native overlay behavior |
 
 Key source files:
 
@@ -24,8 +25,17 @@ Key source files:
 - [`electron/preload.ts`](../electron/preload.ts) — restricted renderer bridge
 - [`electron/ipc-handlers.ts`](../electron/ipc-handlers.ts) — timer IPC channel registration
 - [`electron/timer-engine.ts`](../electron/timer-engine.ts) — timer state machine
+- [`electron/rest-overlay.ts`](../electron/rest-overlay.ts) — display selection and native overlay window contract
+- [`electron/security.ts`](../electron/security.ts) — trusted renderer URLs and CSP
+- [`electron/timer-persistence.ts`](../electron/timer-persistence.ts) — atomic snapshot storage
+- [`shared/timer-contract.ts`](../shared/timer-contract.ts) — timer state shared by Electron and React
 - [`src/App.tsx`](../src/App.tsx) — React web interface
+- [`src/aperture/ApertureApp.tsx`](../src/aperture/ApertureApp.tsx) — active dashboard interface
+- [`src/browser-fallback.ts`](../src/browser-fallback.ts) — interactive, in-memory browser preview API
+- [`src/CurrentEyeBreakApp.tsx`](../src/CurrentEyeBreakApp.tsx) — preserved dashboard and shared break renderer
+- [`src/rest-audio.ts`](../src/rest-audio.ts) — local Web Audio transition cues
 - [`src/electron.d.ts`](../src/electron.d.ts) — TypeScript definition for the preload API
+- [`build/after-pack.cjs`](../build/after-pack.cjs) — production Electron fuse locking
 - [`package.json`](../package.json) — dependencies, scripts, and packaging configuration
 
 ## Overall architecture
@@ -40,8 +50,7 @@ flowchart LR
     I --> M["Main process<br/>electron/main.ts"]
     M --> T["Timer engine"]
     M --> W["Native windows and tray"]
-    M --> N["Notifications and sounds"]
-    M --> C["Media controller"]
+    R --> S["Local transition sounds"]
     M --> D["Timer snapshot on disk"]
     T --> M
     M -->|"timer:state"| P
@@ -65,8 +74,6 @@ Eye Break uses Electron for:
 - Creating the main application window
 - Creating the full-screen break window
 - Keeping the application available through the system tray
-- Displaying native notifications
-- Playing system alert sounds
 - Detecting laptop suspend and resume
 - Storing timer data in the application's user-data directory
 - Ensuring only one copy of the app runs
@@ -82,10 +89,10 @@ Eye Break has three relevant execution contexts:
 | Preload isolated world | `electron/preload.ts` | Electron bridge access |
 | Renderer main world | `src/App.tsx` | Browser and React APIs |
 
-Each `BrowserWindow` gets its own renderer process. Eye Break creates a main
-window for the dashboard and a second renderer window for the break overlay.
-Both renderer windows use the same React build but receive a different query
-parameter:
+Each `BrowserWindow` gets its own renderer process. Eye Break creates one main
+dashboard window and zero or more break windows according to the selected
+display mode. Every window uses the same React build; break windows receive a
+query parameter:
 
 ```text
 Main interface:  index.html
@@ -109,7 +116,7 @@ The main process:
 5. Restarts the timer interval when required.
 6. Registers power-monitor and display events.
 7. Registers IPC handlers.
-8. Coordinates timer transitions with native UI and media controls.
+8. Coordinates timer transitions with native rest windows and renderer sounds.
 9. Saves timer state before the application quits.
 
 The timer logic itself is kept in `TimerEngine`, rather than being embedded in
@@ -134,9 +141,21 @@ The desktop timer is authoritative. React displays the state received from
 Electron instead of maintaining a separate production timer.
 
 When the same renderer is opened in a normal browser, `window.eyeBreak` is not
-available. `App.tsx` currently supplies a static browser fallback so the design
-can be previewed, but the full native timer, tray, notifications, persistence,
-and media controls require Electron.
+available. [`src/browser-fallback.ts`](../src/browser-fallback.ts) supplies an
+interactive in-memory timer so the design and primary controls can be previewed.
+The native timer, tray, persistence, display management, and launch-at-login
+behavior still require Electron.
+
+### Selectable dashboard interface
+
+[`src/ui-variant.ts`](../src/ui-variant.ts) contains the single `ACTIVE_UI`
+constant used to select the main-window design:
+
+- `aperture` — the active dashboard
+- `eye-break` — the preserved previous dashboard
+
+The native break renderer is shared by both variants, so switching the
+dashboard does not fork timer, IPC, persistence, or multi-display behavior.
 
 ---
 
@@ -147,16 +166,25 @@ renderer and Electron files into a distributable desktop application.
 
 ### Project commands
 
-```bash
-# Compile React and Electron
-npm run build
+Every project script is declared in `package.json`:
 
-# Produce an unpacked app directory for local testing
-npm run package
-
-# Produce platform-specific installers and archives
-npm run dist
-```
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Start Vite and one Electron development application |
+| `npm run dev:web` | Start the interactive browser-only UI preview |
+| `npm run build` | Type-check and build the renderer, main process, and preload bundles |
+| `npm run check` | Run lint, the complete test suite, and a production build |
+| `npm run lint` | Check the source with Oxlint |
+| `npm test` | Run all Vitest tests once |
+| `npm run test:watch` | Run Vitest in watch mode |
+| `npm run test:native-overlays` | Run display-selection and native break-window contract tests |
+| `npm run audit:production` | Audit only dependencies shipped in the application |
+| `npm run audit:all` | Audit production and development dependencies |
+| `npm run preview` | Serve the built renderer for browser inspection |
+| `npm run package` | Build an unpacked application directory for local native testing |
+| `npm run dist` | Build the configured installer and archive formats |
+| `npm run 21st:search -- "<query>"` | Search 21st.dev components through the local CLI |
+| `npm run 21st:add -- <component>` | Add a selected 21st.dev component |
 
 `electron-builder --dir` creates an unpacked application without creating the
 final installer. This is useful for testing. Running `electron-builder` without
@@ -171,6 +199,7 @@ The configuration is stored in the `build` property of `package.json`.
 | `appId` | `com.eyebreak.desktop` | Unique application identifier |
 | `productName` | `Eye Break` | User-facing application name |
 | `asar` | `true` | Packages application files into `app.asar` |
+| `afterPack` | `build/after-pack.cjs` | Locks Electron fuses after packaging |
 | `directories.output` | `release` | Places generated packages in `release/` |
 | `directories.buildResources` | `build` | Reads packaging assets from `build/` |
 | `artifactName` | Product, version, OS, and architecture | Produces predictable filenames |
@@ -240,12 +269,12 @@ The main window:
 The break window:
 
 - Has no frame
-- Uses a transparent background
+- Uses an opaque background to avoid white or transparent flashes
 - Does not appear in the taskbar
 - Cannot be resized or moved
 - Covers its assigned display
 - Loads the React break-overlay mode
-- Remains focusable so its Pause and Stop controls work
+- Remains focusable so Escape and visible rest controls work
 
 ### System tray operation
 
@@ -278,23 +307,59 @@ The control is unavailable in development builds so Eye Break never registers
 the Electron development executable as a startup item. On macOS, the interface
 also reports when the login item requires approval in System Settings.
 
+### Sleep, wake, and restart behavior
+
+The Electron main process listens for `powerMonitor` suspend and resume events.
+On suspend it stops the one-second ticker and persists the latest snapshot. On
+resume it discards the suspended interval because laptop sleep is not active
+screen time:
+
+- Auto Mode starts a fresh full focus period.
+- Manual mode resets to Ready and waits for the user to start.
+
+A normal application restart is different from sleep. Active timestamped
+timers account for time that passed while the app was closed, paused timers
+remain paused, and Auto Mode advances through completed cycles. Corrupted or
+incompatible snapshots safely fall back to default state.
+
 ### Full-screen break overlay
 
 When focus time finishes, Eye Break:
 
-1. Requests supported media players to pause.
-2. Plays the system alert sound.
-3. Applies the selected rest-display behavior.
-4. Sends a native notification.
-5. Begins the rest countdown.
+1. Applies the selected rest-display behavior.
+2. Plays the local rest-transition chime at the user's selected volume.
+3. Applies the selected rest-screen appearance.
+4. Begins the rest countdown.
 
 **No screens** keeps the sound and countdown active without creating an
 overlay. **Main display** covers only the operating system's primary display
 and leaves other displays usable. **All displays** creates a synchronized
 fullscreen rest window for every connected display.
 
-The break overlay has Pause and Stop controls. It is hidden when the rest
-period ends or the user stops the cycle.
+| Rest-display setting | Native break windows created | Behavior |
+| --- | ---: | --- |
+| No screens | 0 | Sound and countdown continue without covering a display |
+| Main display | 1 | Only the operating system's primary display is covered |
+| All displays | One per connected display | Every display receives a synchronized fullscreen overlay |
+
+The appearance preference is independent of display placement:
+
+- **Ambient** renders the existing calming gradients, guidance, circular
+  countdown, ripples, and rest controls.
+- **Pitch black** renders a completely black screen with no visible content.
+  The countdown continues internally, the local sound still plays, and Escape
+  can still end the rest.
+- **Black + timer** renders a black screen with only the centered circular
+  countdown and ripple effect.
+
+Both placement and appearance are part of the persisted native timer state.
+Changing the appearance is broadcast to every active break window, so all
+connected displays remain synchronized.
+
+Ambient mode provides **Extend 20 seconds** and **Skip rest** controls.
+Pitch-black modes intentionally omit visible controls; Escape ends the rest in
+every mode. Pause, Resume, Stop, and Open Eye Break remain available from the
+system tray. All overlays are hidden when the rest ends or the cycle stops.
 
 ### Always-on-top priority
 
@@ -317,21 +382,18 @@ display is attached, removed, or changes metrics. One overlay receives keyboard
 focus in all-display mode. Main-display mode does not pull focus back when the
 user interacts with an application on another display.
 
-If every break window loses focus while a break is active, Eye Break brings the
-overlay set forward again. The user can still Pause or Stop from any overlay.
+If every break window loses focus while an all-display break is active, Eye
+Break brings the overlay set forward again. Timer controls remain available
+through the tray.
 
-### Native notifications
+### No native notifications
 
-At the end of focus time, Eye Break checks
-`Notification.isSupported()` and creates an operating-system notification.
+Eye Break intentionally does not use Electron's `Notification` API. Finishing a
+focus period is communicated through the selected rest-display behavior and
+the app's local transition chime. The application therefore does not request or
+depend on operating-system notification permission.
 
-The message includes the selected break duration. The notification itself is
-silent because Eye Break separately plays its own local transition chime.
-
-Notification display can still depend on the user's operating-system permission
-and notification settings.
-
-### System sounds
+### Local transition sounds
 
 The renderer creates dependency-free Web Audio chimes:
 
@@ -355,8 +417,8 @@ mainWindow.on('close', (event) => {
 })
 ```
 
-Hiding the window does not stop the main process, timer interval, tray, or native
-notifications. The user must choose Quit from the tray or another real quit
+Hiding the window does not stop the main process, timer interval, tray, sounds,
+or rest windows. The user must choose Quit from the tray or another real quit
 action to terminate the application.
 
 ### Single-instance application handling
@@ -402,9 +464,10 @@ React
 `ipcRenderer.invoke()` returns a promise. The corresponding main-process handler
 returns the updated timer state.
 
-### Available timer channels
+### Available IPC channels
 
-All channel names are centralized in `TIMER_IPC_CHANNELS`.
+Timer channel names are centralized in `TIMER_IPC_CHANNELS`; application
+preference channels are centralized in `APP_IPC_CHANNELS`.
 
 | Channel | Direction | Argument | Purpose |
 | --- | --- | --- | --- |
@@ -419,7 +482,14 @@ All channel names are centralized in `TIMER_IPC_CHANNELS`.
 | `timer:set-break-duration` | Renderer → main | Milliseconds | Change rest duration |
 | `timer:set-auto-mode` | Renderer → main | Boolean | Enable or disable repetition |
 | `timer:set-rest-overlay-mode` | Renderer → main | Display mode | Choose no overlay, primary display, or all displays |
+| `timer:set-rest-appearance-mode` | Renderer → main | Appearance mode | Choose Ambient, Pitch black, or Black + timer |
 | `timer:state` | Main → renderer | `TimerState` | Push state changes to windows |
+| `app:get-launch-at-login` | Renderer → main | None | Read the native startup preference |
+| `app:set-launch-at-login` | Renderer → main | Boolean | Enable or disable launch at login |
+
+The two `app:*` channels use a separate explicit allowlist because launch at
+login is an application preference rather than a timer-engine action. They
+receive the same sender and argument validation as timer channels.
 
 ### Main-to-renderer state updates
 
@@ -441,25 +511,31 @@ The preload script publishes one controlled global:
 window.eyeBreak
 ```
 
-Its public methods are:
+Its complete public API is:
 
-```ts
-getState()
-start()
-pause()
-resume()
-stop()
-setRemaining(remainingMs)
-setBreakDuration(durationMs)
-setAutoMode(enabled)
-onStateChange(callback)
-```
+| Method | Argument | Result and purpose |
+| --- | --- | --- |
+| `getState()` | None | Returns the current `TimerState` |
+| `start()` | None | Starts a focus period |
+| `pause()` | None | Pauses the current focus or rest phase |
+| `resume()` | None | Resumes the paused phase |
+| `stop()` | None | Stops the cycle and returns it to idle |
+| `restNow()` | None | Starts a rest immediately |
+| `endBreak()` | None | Ends the current rest and closes its overlays |
+| `setRemaining(remainingMs)` | Milliseconds | Adjusts the current countdown |
+| `setBreakDuration(durationMs)` | Milliseconds | Changes the configured rest duration |
+| `setAutoMode(enabled)` | Boolean | Enables or disables repeating cycles |
+| `setRestOverlayMode(mode)` | `none`, `primary-display`, or `all-displays` | Changes native overlay placement |
+| `setRestAppearanceMode(mode)` | `ambient`, `black`, or `black-timer` | Changes the rest-screen appearance |
+| `getLaunchAtLogin()` | None | Reads native launch-at-login support and state |
+| `setLaunchAtLogin(enabled)` | Boolean | Changes the native startup preference |
+| `onStateChange(callback)` | State listener | Subscribes to pushed timer updates and resolves to an unsubscribe function |
 
 React receives TypeScript support for this API from `src/electron.d.ts`.
 
-### Context isolation
+### Preload isolation boundary
 
-Both windows set:
+Every renderer window sets:
 
 ```ts
 contextIsolation: true
@@ -472,9 +548,10 @@ to expose the narrow `eyeBreak` API.
 
 The raw `ipcRenderer` object is never exposed to React.
 
-### IPC security
+### Implemented IPC boundary security
 
-Positive properties of the current IPC design:
+These controls are implemented in the current code; they are not remaining
+hardening work:
 
 - Channel names are explicit and centralized.
 - The renderer cannot choose arbitrary channel names.
@@ -484,12 +561,24 @@ Positive properties of the current IPC design:
 - Numeric timer operations reject non-finite values in `TimerEngine`.
 - Media and shell commands are not exposed through IPC.
 
-Remaining hardening work:
+Every timer and application-preference handler validates its sender before
+invoking an action. A sender is accepted only when:
 
-- Validate every IPC argument at the handler boundary, not only in the engine.
-- Validate the sender frame and expected renderer origin.
-- Reject requests from unexpected windows.
-- Add negative tests for malformed IPC payloads.
+1. Its `webContents.id` belongs to the current dashboard or an active break
+   window.
+2. The request comes from that window's top-level main frame.
+3. The frame URL matches the trusted development origin or packaged renderer
+   file.
+
+Mutable arguments are validated at the IPC boundary for type, finite numeric
+value, range, allowed increment, or exact allowed string value. Unexpected
+windows, subframes, untrusted URLs, and malformed payloads are rejected before
+they can reach the timer or startup-preference actions.
+
+[`tests/ipc-handlers.test.ts`](../tests/ipc-handlers.test.ts) covers sender
+rejection, malformed timer payloads, invalid display and appearance modes, and
+invalid launch-at-login values. [`tests/security.test.ts`](../tests/security.test.ts)
+covers trusted renderer URL rules and the production CSP.
 
 ---
 
@@ -517,7 +606,7 @@ Electron maintains an official
 | IPC argument validation | Implemented | Types and ranges checked at every boundary |
 | Navigation and new windows | Restricted | Untrusted navigation, webviews, and popups are denied |
 | Local timer storage | Plain JSON | Contains timer state, not credentials |
-| Shell command construction | Static and argument-based | No user input reaches commands |
+| Runtime shell execution | Not used | No shell or media commands are executed |
 
 ### Electron sandboxing
 
@@ -569,7 +658,9 @@ font-src 'self';
 connect-src 'self';
 object-src 'none';
 base-uri 'none';
+frame-src 'none';
 frame-ancestors 'none';
+form-action 'none';
 ```
 
 The inline-style allowance supports the timer's dynamic progress visuals.
@@ -615,7 +706,9 @@ The file contains:
 - Timer phase and remaining time
 - Focus and break durations
 - Auto Mode state
+- Rest-display placement and appearance preferences
 - Completed-session count
+- Accumulated focus and eye-rest time
 - Timestamps required for restoration
 
 It does not contain passwords, authentication tokens, payment data, or the
@@ -626,6 +719,15 @@ reduces the chance of leaving partially written JSON after interruption.
 
 The snapshot is plain JSON and is not encrypted. Sensitive data should not be
 added to this file without a separate security design.
+
+Two renderer-only preferences use Chromium `localStorage`:
+
+- `eye-break-rest-volume` — the local chime volume
+- `eye-break-rest-seconds` — the preferred rest duration used by the UI
+
+These values contain no credentials or personal content. The authoritative
+desktop timer snapshot still contains the current break duration so native
+windows remain synchronized.
 
 ### No media automation or shell control
 
@@ -641,16 +743,47 @@ The project must continue to avoid:
 - Using `exec()` for dynamically built command strings
 - Exposing command execution through the preload API
 
+### Locked Electron fuses
+
+Electron Builder runs `build/after-pack.cjs` against every packaged binary. The
+hook uses the official `@electron/fuses` package to:
+
+- Disable `ELECTRON_RUN_AS_NODE`
+- Disable `NODE_OPTIONS`
+- Disable command-line Node inspection arguments
+- Enable cookie encryption
+- Validate the embedded ASAR
+- Require application code to load from the ASAR
+- Disable extra `file://` privileges
+- Enable the browser-specific V8 snapshot and WebAssembly trap handlers
+
+Fuse locking happens after packaging and before code signing. The macOS hook
+resets the ad-hoc signature after modifying the binary so the final application
+can be signed normally.
+
+### Dependency audits
+
+Run both audit levels before a release:
+
+```bash
+npm audit --omit=dev
+npm audit
+```
+
+The production dependency audit is the release-blocking result because those
+packages ship in the application. Development-only findings must still be
+reviewed because packaging tools process project files during a trusted build.
+
 ---
 
 ## Recommended security roadmap
 
 Complete these items before public distribution:
 
-1. Review and lock Electron fuses for distribution builds.
-2. Add Apple and Windows code signing.
-3. Add OS-level multi-display integration tests.
-4. Keep Electron and Electron Builder updated.
+1. Add Apple and Windows code signing.
+2. Run the native overlay suite on macOS, Windows, and Linux CI runners.
+3. Manually verify real multi-monitor hardware on each supported operating system.
+4. Keep Electron, Electron Builder, and development-tool audit findings reviewed and updated.
 
 ## Related automated tests
 
@@ -660,9 +793,19 @@ Complete these items before public distribution:
 | [`tests/ipc-handlers.test.ts`](../tests/ipc-handlers.test.ts) | IPC sender and argument validation |
 | [`tests/security.test.ts`](../tests/security.test.ts) | Trusted renderer URLs and production CSP |
 | [`tests/timer-persistence.test.ts`](../tests/timer-persistence.test.ts) | Atomic save, restore, and corrupted data |
+| [`tests/rest-overlay.test.ts`](../tests/rest-overlay.test.ts) | Display-mode selection |
+| [`tests/rest-overlay-native.test.ts`](../tests/rest-overlay-native.test.ts) | Secure window options, fullscreen calls, multi-display synchronization, and cleanup |
+| [`tests/rest-audio.test.ts`](../tests/rest-audio.test.ts) | Volume normalization and local preference persistence |
+| [`tests/browser-fallback.test.ts`](../tests/browser-fallback.test.ts) | Interactive browser-preview controls and preferences |
 
 Run all tests with:
 
 ```bash
 npm test
+```
+
+Run only the native display contract tests with:
+
+```bash
+npm run test:native-overlays
 ```

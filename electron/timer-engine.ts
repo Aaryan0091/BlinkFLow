@@ -1,26 +1,19 @@
-export type TimerPhase = 'idle' | 'focus' | 'break' | 'paused'
+import type {
+  RestAppearanceMode,
+  RestOverlayMode,
+  TimerPhase,
+  TimerState,
+} from '../shared/timer-contract.js'
+
+export type {
+  RestAppearanceMode,
+  RestOverlayMode,
+  TimerPhase,
+  TimerState,
+} from '../shared/timer-contract.js'
+
 export type ResumableTimerPhase = Exclude<TimerPhase, 'paused'>
 export type TimerTransition = 'focus-ended' | 'break-ended'
-export type RestOverlayMode = 'none' | 'primary-display' | 'all-displays'
-export type RestAppearanceMode = 'ambient' | 'black' | 'black-timer'
-
-export type TimerState = {
-  phase: TimerPhase
-  isRunning: boolean
-  isPaused: boolean
-  focusDurationMs: number
-  breakDurationMs: number
-  remainingMs: number
-  elapsedFocusMs: number
-  completedFocusSessions: number
-  totalScreenTimeMs: number
-  totalEyeRestTimeMs: number
-  startedAt: number | null
-  breakStartedAt: number | null
-  autoMode: boolean
-  restOverlayMode: RestOverlayMode
-  restAppearanceMode: RestAppearanceMode
-}
 
 export type TimerSnapshot = {
   version: 1

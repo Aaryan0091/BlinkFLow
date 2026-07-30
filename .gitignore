@@ -12,7 +12,9 @@ dist
 dist-electron
 release
 dist-ssr
+coverage
 *.local
+.kilo/
 
 # Local environment variables
 .env
