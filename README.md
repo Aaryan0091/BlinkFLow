@@ -125,6 +125,19 @@ share the same native timer and break overlay.
 | `npm run 21st:search -- "<query>"` | Search the 21st.dev component catalog |
 | `npm run 21st:add -- <component>` | Add a selected 21st.dev component |
 
+## Continuous integration
+
+The [GitHub Actions workflow](.github/workflows/ci.yml) runs on every push and
+pull request and can also be started manually. It checks Ubuntu, macOS, and
+Windows with Node.js 22.
+
+Each operating system runs lint, the complete test suite, the focused native
+overlay contract tests, and the production build. A separate Ubuntu job runs
+both dependency audits. Packaged-dependency findings fail the workflow;
+development-toolchain findings remain visible as a warning because Electron
+Builder currently contains known transitive advisories that do not ship in the
+application.
+
 ## Packaging
 
 Configured outputs:

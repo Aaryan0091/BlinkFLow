@@ -36,6 +36,7 @@ Key source files:
 - [`src/rest-audio.ts`](../src/rest-audio.ts) — local Web Audio transition cues
 - [`src/electron.d.ts`](../src/electron.d.ts) — TypeScript definition for the preload API
 - [`build/after-pack.cjs`](../build/after-pack.cjs) — production Electron fuse locking
+- [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) — cross-platform quality and dependency-audit automation
 - [`package.json`](../package.json) — dependencies, scripts, and packaging configuration
 
 ## Overall architecture
@@ -781,9 +782,25 @@ reviewed because packaging tools process project files during a trusted build.
 Complete these items before public distribution:
 
 1. Add Apple and Windows code signing.
-2. Run the native overlay suite on macOS, Windows, and Linux CI runners.
-3. Manually verify real multi-monitor hardware on each supported operating system.
-4. Keep Electron, Electron Builder, and development-tool audit findings reviewed and updated.
+2. Manually verify real multi-monitor hardware on each supported operating system.
+3. Keep Electron, Electron Builder, and development-tool audit findings reviewed and updated.
+
+## Continuous integration
+
+[`.github/workflows/ci.yml`](../.github/workflows/ci.yml) runs on pushes, pull
+requests, and manual dispatches. Its quality matrix covers Ubuntu, macOS, and
+Windows with Node.js 22. Every runner installs the locked dependency graph and
+runs:
+
+- Oxlint
+- The complete Vitest suite
+- The focused native-overlay contract suite
+- The renderer, Electron main-process, and preload build
+
+A separate Ubuntu job runs both security audits. The packaged-dependency audit
+is blocking. The complete development-toolchain audit is non-blocking but
+produces a visible warning and workflow summary when Electron Builder's
+transitive development dependencies report advisories.
 
 ## Related automated tests
 
@@ -795,6 +812,7 @@ Complete these items before public distribution:
 | [`tests/timer-persistence.test.ts`](../tests/timer-persistence.test.ts) | Atomic save, restore, and corrupted data |
 | [`tests/rest-overlay.test.ts`](../tests/rest-overlay.test.ts) | Display-mode selection |
 | [`tests/rest-overlay-native.test.ts`](../tests/rest-overlay-native.test.ts) | Secure window options, fullscreen calls, multi-display synchronization, and cleanup |
+| [`tests/rest-overlay-render-state.test.ts`](../tests/rest-overlay-render-state.test.ts) | Break-window hydration, phase rejection, duration clamping, and renderer-side countdown projection |
 | [`tests/rest-audio.test.ts`](../tests/rest-audio.test.ts) | Volume normalization and local preference persistence |
 | [`tests/browser-fallback.test.ts`](../tests/browser-fallback.test.ts) | Interactive browser-preview controls and preferences |
 

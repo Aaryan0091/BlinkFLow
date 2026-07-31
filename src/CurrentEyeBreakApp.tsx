@@ -28,6 +28,7 @@ import {
   saveRestVolumePreference,
   unlockRestAudio,
 } from './rest-audio'
+import { getRestOverlayViewState } from './rest-overlay-state'
 import './App.css'
 
 const phaseCopy: Record<TimerPhase, { eyebrow: string; title: string; description: string }> = {
@@ -64,6 +65,7 @@ function App() {
   const eyeBreak = window.eyeBreak ?? browserFallback
   const isBreakWindow = new URLSearchParams(window.location.search).get('mode') === 'break'
   const [timer, setTimer] = useState<TimerState>(DEFAULT_TIMER_STATE)
+  const [hasInitialTimerState, setHasInitialTimerState] = useState(false)
   const [launchAtLogin, setLaunchAtLogin] = useState<LaunchAtLoginState>({
     supported: false,
     enabled: false,
@@ -80,18 +82,24 @@ function App() {
   )
 
   useEffect(() => {
-    const unsubscribePromise = eyeBreak.onStateChange((state) => {
-      setTimer(state)
-      setNow(Date.now())
-    })
+    let isCurrentSubscription = true
+    setHasInitialTimerState(false)
 
-    eyeBreak.getState().then((state) => {
+    const applyTimerState = (state: TimerState) => {
+      if (!isCurrentSubscription) return
       setTimer(state)
       setNow(Date.now())
-    })
+      setHasInitialTimerState(true)
+    }
+
+    const unsubscribePromise = eyeBreak.onStateChange(applyTimerState)
+    void eyeBreak.getState().then(applyTimerState).catch(() => undefined)
 
     return () => {
-      void unsubscribePromise.then((unsubscribe) => unsubscribe())
+      isCurrentSubscription = false
+      void unsubscribePromise
+        .then((unsubscribe) => unsubscribe())
+        .catch(() => undefined)
     }
   }, [eyeBreak])
 
@@ -111,6 +119,12 @@ function App() {
     return () => window.clearInterval(interval)
   }, [])
 
+  const restOverlayState = getRestOverlayViewState(
+    timer,
+    hasInitialTimerState,
+    now,
+  )
+
   useEffect(() => {
     if (isBreakWindow) return
 
@@ -128,11 +142,13 @@ function App() {
   }, [isBreakWindow, timer.breakStartedAt, timer.phase])
 
   useEffect(() => {
+    if (isBreakWindow) return
+
     const savedRestSeconds = Number(window.localStorage.getItem('eye-break-rest-seconds'))
     if (Number.isFinite(savedRestSeconds) && savedRestSeconds >= 5 && savedRestSeconds <= 120) {
       void eyeBreak.setBreakDuration(savedRestSeconds * 1000).then(setTimer)
     }
-  }, [eyeBreak])
+  }, [eyeBreak, isBreakWindow])
 
   useEffect(() => {
     if (introStage !== 'leaving') return
@@ -145,16 +161,20 @@ function App() {
   }, [introStage, prefersReducedMotion])
 
   if (isBreakWindow) {
+    if (!restOverlayState) return null
+
     return (
       <BreakOverlay
-        appearance={timer.restAppearanceMode}
-        remainingMs={timer.remainingMs}
-        totalMs={timer.breakDurationMs}
-        cycle={timer.completedFocusSessions}
-        paused={timer.isPaused || timer.phase === 'paused'}
+        appearance={restOverlayState.appearance}
+        remainingMs={restOverlayState.remainingMs}
+        totalMs={restOverlayState.totalMs}
+        cycle={restOverlayState.cycle}
+        paused={restOverlayState.paused}
         onExtend={() =>
           void eyeBreak
-            .setBreakDuration(Math.min(timer.breakDurationMs + 20_000, 120_000))
+            .setBreakDuration(
+              Math.min(restOverlayState.totalMs + 20_000, 120_000),
+            )
             .then(setTimer)
         }
         onSkip={() => void eyeBreak.endBreak().then(setTimer)}

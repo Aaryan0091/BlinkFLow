@@ -108,6 +108,7 @@ export function isTimerSnapshot(value: unknown): value is TimerSnapshot {
     state.focusDurationMs > 0 &&
     isFiniteNumber(state?.breakDurationMs) &&
     state.breakDurationMs > 0 &&
+    state.breakDurationMs <= 120_000 &&
     isFiniteNumber(state?.remainingMs) &&
     isFiniteNumber(state?.elapsedFocusMs) &&
     isFiniteNumber(state?.completedFocusSessions) &&

@@ -276,6 +276,17 @@ describe('TimerEngine', () => {
 })
 
 describe('timer snapshot restoration', () => {
+  it('rejects a persisted rest duration longer than two minutes', () => {
+    const oversizedBreak = snapshotWith({
+      breakDurationMs: 20 * 60 * 1000,
+    })
+
+    expect(isTimerSnapshot(oversizedBreak)).toBe(false)
+    expect(
+      new TimerEngine({ snapshot: oversizedBreak }).getState().breakDurationMs,
+    ).toBe(20_000)
+  })
+
   it('migrates snapshots saved before rest display preferences existed', () => {
     const legacySnapshot = snapshotWith({})
     const legacyState = legacySnapshot.state as Partial<TimerState>
