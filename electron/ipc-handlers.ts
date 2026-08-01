@@ -4,6 +4,11 @@ import type {
   RestOverlayMode,
   TimerState,
 } from './timer-engine.js'
+import {
+  FOCUS_DURATION_STEP_MS,
+  MAX_FOCUS_DURATION_MS,
+  MIN_FOCUS_DURATION_MS,
+} from '../shared/timer-contract.js'
 
 export const TIMER_IPC_CHANNELS = {
   stateChanged: 'timer:state',
@@ -15,6 +20,7 @@ export const TIMER_IPC_CHANNELS = {
   restNow: 'timer:rest-now',
   endBreak: 'timer:end-break',
   setRemaining: 'timer:set-remaining',
+  setFocusDuration: 'timer:set-focus-duration',
   setBreakDuration: 'timer:set-break-duration',
   setAutoMode: 'timer:set-auto-mode',
   setRestOverlayMode: 'timer:set-rest-overlay-mode',
@@ -46,6 +52,7 @@ export type TimerIpcActions = {
   restNow: () => TimerState
   endBreak: () => TimerState
   setRemaining: (remainingMs: number) => TimerState
+  setFocusDuration: (durationMs: number) => TimerState
   setBreakDuration: (durationMs: number) => TimerState
   setAutoMode: (enabled: boolean) => TimerState
   setRestOverlayMode: (mode: RestOverlayMode) => TimerState
@@ -79,10 +86,24 @@ function requireFiniteNumber(value: unknown, label: string) {
 
 function validateRemainingMs(value: unknown) {
   const remainingMs = requireFiniteNumber(value, 'remainingMs')
-  if (remainingMs < 0 || remainingMs > 20 * 60 * 1_000) {
-    throw new RangeError('remainingMs must be between 0 and 20 minutes')
+  if (remainingMs < 0 || remainingMs > MAX_FOCUS_DURATION_MS) {
+    throw new RangeError('remainingMs must be between 0 and 120 minutes')
   }
   return remainingMs
+}
+
+function validateFocusDurationMs(value: unknown) {
+  const durationMs = requireFiniteNumber(value, 'durationMs')
+  if (
+    durationMs < MIN_FOCUS_DURATION_MS ||
+    durationMs > MAX_FOCUS_DURATION_MS ||
+    durationMs % FOCUS_DURATION_STEP_MS !== 0
+  ) {
+    throw new RangeError(
+      'durationMs must be a whole-minute increment between 1 and 120 minutes',
+    )
+  }
+  return durationMs
 }
 
 function validateBreakDurationMs(value: unknown) {
@@ -168,6 +189,13 @@ export function registerTimerIpcHandlers(
     (event, remainingMs: unknown) => {
       assertTrustedSender(event, security)
       return actions.setRemaining(validateRemainingMs(remainingMs))
+    },
+  )
+  ipc.handle(
+    TIMER_IPC_CHANNELS.setFocusDuration,
+    (event, durationMs: unknown) => {
+      assertTrustedSender(event, security)
+      return actions.setFocusDuration(validateFocusDurationMs(durationMs))
     },
   )
   ipc.handle(

@@ -120,6 +120,7 @@ export default function ApertureApp() {
   ])
 
   const paused = timer.isPaused || timer.phase === 'paused'
+  const focusMinutes = Math.round(timer.focusDurationMs / 60_000)
   const visualPhase =
     timer.phase === 'break' || (paused && timer.breakStartedAt !== null)
       ? 'rest'
@@ -142,7 +143,7 @@ export default function ApertureApp() {
     visualPhase === 'rest'
       ? 'Eyes on the horizon'
       : visualPhase === 'idle'
-        ? `20 min of focus, then ${Math.round(timer.breakDurationMs / 1000)} s of distance`
+        ? `${focusMinutes} min of focus, then ${Math.round(timer.breakDurationMs / 1000)} s of distance`
         : paused
           ? 'Held. Pick it back up whenever you are ready.'
           : `Next rest at ${atTime(timer.remainingMs)}`
@@ -215,8 +216,8 @@ export default function ApertureApp() {
             </h1>
             <p className="aperture-intro">
               Screens lock your focus at a single depth and quietly halve your blink
-              rate. Aperture breaks that loop every 20 minutes — briefly, calmly,
-              and impossible to overlook.
+              rate. Aperture breaks that loop on your chosen rhythm — briefly,
+              calmly, and impossible to overlook.
             </p>
 
             <div className="aperture-facts">
@@ -227,7 +228,7 @@ export default function ApertureApp() {
               />
               <Fact
                 label="Rhythm"
-                value={`20m · ${Math.round(timer.breakDurationMs / 1000)}s`}
+                value={`${focusMinutes}m · ${Math.round(timer.breakDurationMs / 1000)}s`}
               />
             </div>
 
@@ -314,6 +315,9 @@ export default function ApertureApp() {
             timer={timer}
             launchAtLogin={launchAtLogin}
             onClose={() => setSettingsOpen(false)}
+            onFocusDuration={(minutes) => {
+              void eyeBreak.setFocusDuration(minutes * 60_000).then(setTimer)
+            }}
             onRestDuration={(seconds) => {
               window.localStorage.setItem('eye-break-rest-seconds', String(seconds))
               void eyeBreak.setBreakDuration(seconds * 1000).then(setTimer)
@@ -433,6 +437,7 @@ function Preferences({
   timer,
   launchAtLogin,
   onClose,
+  onFocusDuration,
   onRestDuration,
   onAutoMode,
   restVolume,
@@ -446,6 +451,7 @@ function Preferences({
   timer: TimerState
   launchAtLogin: boolean
   onClose: () => void
+  onFocusDuration: (minutes: number) => void
   onRestDuration: (seconds: number) => void
   onAutoMode: (enabled: boolean) => void
   restVolume: number
@@ -456,7 +462,26 @@ function Preferences({
   onRestAppearanceMode: (mode: RestAppearanceMode) => void
   onLaunchAtLogin: (enabled: boolean) => void
 }) {
+  const focusMinutes = Math.round(timer.focusDurationMs / 60_000)
   const restSeconds = Math.round(timer.breakDurationMs / 1000)
+  const [focusMinutesDraft, setFocusMinutesDraft] = useState(
+    String(focusMinutes),
+  )
+  const replaceFocusValueOnType = useRef(true)
+
+  useEffect(() => {
+    setFocusMinutesDraft(String(focusMinutes))
+  }, [focusMinutes])
+
+  const commitFocusDuration = () => {
+    const parsedMinutes = Number(focusMinutesDraft)
+    const nextMinutes = Number.isFinite(parsedMinutes)
+      ? Math.min(120, Math.max(1, Math.round(parsedMinutes)))
+      : focusMinutes
+
+    setFocusMinutesDraft(String(nextMinutes))
+    if (nextMinutes !== focusMinutes) onFocusDuration(nextMinutes)
+  }
 
   useEffect(() => {
     const close = (event: KeyboardEvent) => event.key === 'Escape' && onClose()
@@ -497,6 +522,68 @@ function Preferences({
 
         <div className="aperture-preference-body">
           <h3>Rhythm</h3>
+          <div className="aperture-duration-field">
+            <label htmlFor="focus-duration-minutes">
+              <span>Focus interval</span>
+              <small id="focus-duration-help">
+                The break begins after this much focused screen time.
+              </small>
+            </label>
+            <div className="aperture-duration-input">
+              <input
+                id="focus-duration-minutes"
+                type="number"
+                inputMode="numeric"
+                min="1"
+                max="120"
+                step="1"
+                value={focusMinutesDraft}
+                aria-describedby="focus-duration-help"
+                onFocus={(event) => {
+                  replaceFocusValueOnType.current = true
+                  event.currentTarget.select()
+                }}
+                onMouseDown={() => {
+                  replaceFocusValueOnType.current = true
+                }}
+                onChange={(event) =>
+                  setFocusMinutesDraft(event.currentTarget.value)
+                }
+                onBlur={commitFocusDuration}
+                onKeyDown={(event) => {
+                  if (
+                    /^\d$/.test(event.key) &&
+                    replaceFocusValueOnType.current &&
+                    !event.metaKey &&
+                    !event.ctrlKey &&
+                    !event.altKey
+                  ) {
+                    event.preventDefault()
+                    replaceFocusValueOnType.current = false
+                    setFocusMinutesDraft(event.key)
+                    return
+                  }
+
+                  if (
+                    (event.key === 'Backspace' || event.key === 'Delete') &&
+                    replaceFocusValueOnType.current
+                  ) {
+                    event.preventDefault()
+                    replaceFocusValueOnType.current = false
+                    setFocusMinutesDraft('')
+                    return
+                  }
+
+                  replaceFocusValueOnType.current = false
+                  if (event.key === 'Enter') {
+                    event.preventDefault()
+                    event.currentTarget.blur()
+                  }
+                }}
+              />
+              <span>min</span>
+            </div>
+          </div>
           <div className="aperture-presets">
             <button
               type="button"
@@ -508,7 +595,7 @@ function Preferences({
                 Classic
                 {restSeconds === 20 && <Check size={14} aria-hidden="true" />}
               </span>
-              <small>20 min · 20 s</small>
+              <small>20 s rest</small>
             </button>
             <button
               type="button"
@@ -520,7 +607,7 @@ function Preferences({
                 Deep work
                 {restSeconds === 60 && <Check size={14} aria-hidden="true" />}
               </span>
-              <small>20 min · 60 s</small>
+              <small>60 s rest</small>
             </button>
           </div>
           <label className="aperture-slider">

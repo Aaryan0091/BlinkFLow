@@ -215,6 +215,39 @@ describe('TimerEngine', () => {
     expect(engine.setBreakDuration(999_000).breakDurationMs).toBe(120_000)
   })
 
+  it('changes the focus interval and preserves elapsed focus time', () => {
+    let now = 1000
+    const engine = new TimerEngine({ now: () => now })
+
+    let state = engine.setFocusDuration(45 * 60_000)
+    expect(state.focusDurationMs).toBe(45 * 60_000)
+    expect(state.remainingMs).toBe(45 * 60_000)
+
+    engine.start()
+    now += 5 * 60_000
+    engine.tick()
+    state = engine.setFocusDuration(30 * 60_000)
+
+    expect(state.focusDurationMs).toBe(30 * 60_000)
+    expect(state.elapsedFocusMs).toBe(5 * 60_000)
+    expect(state.remainingMs).toBe(25 * 60_000)
+
+    engine.pause()
+    state = engine.setFocusDuration(40 * 60_000)
+    expect(state.remainingMs).toBe(35 * 60_000)
+    expect(state.isPaused).toBe(true)
+  })
+
+  it('clamps focus intervals to whole minutes between 1 and 120', () => {
+    const engine = new TimerEngine()
+
+    expect(engine.setFocusDuration(90_000).focusDurationMs).toBe(120_000)
+    expect(engine.setFocusDuration(1000).focusDurationMs).toBe(60_000)
+    expect(engine.setFocusDuration(999_000_000).focusDurationMs).toBe(
+      120 * 60_000,
+    )
+  })
+
   it('resets to ready after wake when Auto Mode is off', () => {
     let now = 1000
     const engine = new TimerEngine({ now: () => now })

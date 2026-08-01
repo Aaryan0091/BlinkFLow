@@ -20,6 +20,7 @@ declare global {
       restNow: () => Promise<TimerState>
       endBreak: () => Promise<TimerState>
       setRemaining: (remainingMs: number) => Promise<TimerState>
+      setFocusDuration: (durationMs: number) => Promise<TimerState>
       setBreakDuration: (durationMs: number) => Promise<TimerState>
       setAutoMode: (enabled: boolean) => Promise<TimerState>
       setRestOverlayMode: (mode: RestOverlayMode) => Promise<TimerState>

@@ -1,4 +1,5 @@
 import {
+  mkdirSync,
   mkdtempSync,
   rmSync,
   writeFileSync,
@@ -33,6 +34,7 @@ describe('timer persistence', () => {
     engine.setAutoMode(true)
     engine.setRestOverlayMode('primary-display')
     engine.setRestAppearanceMode('black-timer')
+    engine.setFocusDuration(45 * 60 * 1000)
     engine.setRemaining(5 * 60 * 1000)
     engine.start()
     now += 60 * 1000
@@ -46,9 +48,10 @@ describe('timer persistence', () => {
     expect(loaded?.state.autoMode).toBe(true)
     expect(loaded?.state.restOverlayMode).toBe('primary-display')
     expect(loaded?.state.restAppearanceMode).toBe('black-timer')
+    expect(loaded?.state.focusDurationMs).toBe(45 * 60 * 1000)
     expect(loaded?.state.totalScreenTimeMs).toBe(60 * 1000)
     expect(loaded?.state.totalEyeRestTimeMs).toBe(0)
-    expect(loaded?.phaseStartedAt).toBe(-895_000)
+    expect(loaded?.phaseStartedAt).toBe(-2_395_000)
 
     const restoredEngine = new TimerEngine({ now: () => now, snapshot: loaded })
     expect(restoredEngine.getState().totalScreenTimeMs).toBe(60 * 1000)
@@ -56,10 +59,9 @@ describe('timer persistence', () => {
 
   it('returns null for a corrupted snapshot instead of crashing', () => {
     const filePath = createTemporaryFile()
-    writeFileSync(filePath.replace('/nested/timer-state.json', '/broken.json'), '{')
+    mkdirSync(path.dirname(filePath), { recursive: true })
+    writeFileSync(filePath, '{')
 
-    expect(
-      readTimerSnapshot(filePath.replace('/nested/timer-state.json', '/broken.json')),
-    ).toBeNull()
+    expect(readTimerSnapshot(filePath)).toBeNull()
   })
 })

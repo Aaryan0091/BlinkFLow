@@ -4,6 +4,11 @@ import type {
   TimerPhase,
   TimerState,
 } from '../shared/timer-contract.js'
+import {
+  FOCUS_DURATION_STEP_MS,
+  MAX_FOCUS_DURATION_MS,
+  MIN_FOCUS_DURATION_MS,
+} from '../shared/timer-contract.js'
 
 export type {
   RestAppearanceMode,
@@ -106,6 +111,7 @@ export function isTimerSnapshot(value: unknown): value is TimerSnapshot {
     typeof state?.isPaused === 'boolean' &&
     isFiniteNumber(state?.focusDurationMs) &&
     state.focusDurationMs > 0 &&
+    state.focusDurationMs <= MAX_FOCUS_DURATION_MS &&
     isFiniteNumber(state?.breakDurationMs) &&
     state.breakDurationMs > 0 &&
     state.breakDurationMs <= 120_000 &&
@@ -661,6 +667,54 @@ export class TimerEngine {
     }
 
     this.state.breakDurationMs = durationMs
+    return this.state
+  }
+
+  setFocusDuration(requestedDurationMs: number) {
+    if (!Number.isFinite(requestedDurationMs)) return this.state
+
+    this.accountActiveTime()
+    const previousDurationMs = this.state.focusDurationMs
+    const durationMs = clamp(
+      Math.round(requestedDurationMs / FOCUS_DURATION_STEP_MS) *
+        FOCUS_DURATION_STEP_MS,
+      MIN_FOCUS_DURATION_MS,
+      MAX_FOCUS_DURATION_MS,
+    )
+    const effectivePhase =
+      this.state.phase === 'paused' ? this.pausedPhase : this.state.phase
+
+    if (effectivePhase === 'focus' || this.state.phase === 'idle') {
+      if (!this.state.isPaused && this.state.phase !== 'idle') {
+        this.syncFocusMetrics()
+      }
+
+      if (this.state.phase === 'idle') {
+        this.state.remainingMs = durationMs
+        this.state.elapsedFocusMs = 0
+        this.pausedRemainingMs = durationMs
+      } else {
+        const elapsedMs = Math.max(
+          previousDurationMs - this.state.remainingMs,
+          0,
+        )
+        const adjustedElapsedMs = Math.min(elapsedMs, durationMs - 1000)
+        const remainingMs = durationMs - adjustedElapsedMs
+
+        this.state.remainingMs = remainingMs
+        this.state.elapsedFocusMs = adjustedElapsedMs
+        this.pausedRemainingMs = remainingMs
+
+        if (!this.state.isPaused) {
+          this.phaseStartedAt = this.now() - adjustedElapsedMs
+          this.state.startedAt = this.phaseStartedAt
+        }
+      }
+    } else if (effectivePhase === 'break') {
+      this.state.elapsedFocusMs = durationMs
+    }
+
+    this.state.focusDurationMs = durationMs
     return this.state
   }
 

@@ -209,6 +209,7 @@ function App() {
           ? 'Focused · remember to blink'
           : 'Strained · a break is getting close'
   const restSeconds = Math.round(timer.breakDurationMs / 1000)
+  const focusMinutes = Math.round(timer.focusDurationMs / 60_000)
   const launchAtLoginDescription = launchAtLoginError
     ? launchAtLoginError
     : launchAtLogin.status === 'requires-approval'
@@ -574,7 +575,7 @@ function App() {
             </div>
 
             <div className="session-stats" aria-label="Cycle settings and progress">
-              <div><span>Focus</span><strong>20m</strong></div>
+              <div><span>Focus</span><strong>{focusMinutes}m</strong></div>
               <div><span>Rest</span><strong>{restSeconds}s</strong></div>
               <div><span>Done</span><strong>{timer.completedFocusSessions}</strong></div>
             </div>
@@ -605,7 +606,7 @@ function App() {
               <RitualStep
                 icon={Laptop}
                 title="Focus"
-                meta="20 minutes"
+                meta={`${focusMinutes} ${focusMinutes === 1 ? 'minute' : 'minutes'}`}
                 state={
                   timer.phase === 'focus'
                     ? 'active'

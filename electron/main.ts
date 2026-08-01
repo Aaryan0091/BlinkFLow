@@ -407,6 +407,12 @@ function setBreakDuration(requestedDurationMs: number) {
   return timerState
 }
 
+function setFocusDuration(requestedDurationMs: number) {
+  const timerState = timerEngine.setFocusDuration(requestedDurationMs)
+  sendState(true)
+  return timerState
+}
+
 function setAutoMode(enabled: boolean) {
   const timerState = timerEngine.setAutoMode(enabled)
   sendState(true)
@@ -609,6 +615,7 @@ if (!hasSingleInstanceLock) {
       restNow,
       endBreak,
       setRemaining: setRemainingTime,
+      setFocusDuration,
       setBreakDuration,
       setAutoMode,
       setRestOverlayMode,

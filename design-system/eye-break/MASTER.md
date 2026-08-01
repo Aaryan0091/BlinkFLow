@@ -67,6 +67,8 @@ selected settings, primary actions, and the eye-rest cue.
 
 - Boolean preferences use switches.
 - Mutually exclusive choices use accessible radio groups.
+- Numeric duration preferences keep an editable draft and commit on blur or
+  Enter so multi-digit keyboard input is never applied one digit at a time.
 - Selected options combine text, iconography, and color; color is never the
   only state indicator.
 - Asynchronous native settings disable repeated interaction while saving.

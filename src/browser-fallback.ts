@@ -4,6 +4,11 @@ import type {
   RestOverlayMode,
   TimerState,
 } from '../shared/timer-contract'
+import {
+  FOCUS_DURATION_STEP_MS,
+  MAX_FOCUS_DURATION_MS,
+  MIN_FOCUS_DURATION_MS,
+} from '../shared/timer-contract'
 
 const SECOND_MS = 1_000
 const FOCUS_DURATION_MS = 20 * 60 * SECOND_MS
@@ -172,6 +177,47 @@ export const browserFallback = {
     return publish({
       ...state,
       remainingMs: Math.min(durationMs, Math.max(SECOND_MS, remainingMs)),
+    })
+  },
+  async setFocusDuration(requestedDurationMs: number) {
+    const durationMs = Math.min(
+      MAX_FOCUS_DURATION_MS,
+      Math.max(
+        MIN_FOCUS_DURATION_MS,
+        Math.round(requestedDurationMs / FOCUS_DURATION_STEP_MS) *
+          FOCUS_DURATION_STEP_MS,
+      ),
+    )
+    const inFocus = state.breakStartedAt === null && state.phase !== 'break'
+
+    if (!inFocus) {
+      return publish({
+        ...state,
+        focusDurationMs: durationMs,
+        elapsedFocusMs: durationMs,
+      })
+    }
+
+    if (state.phase === 'idle') {
+      return publish({
+        ...state,
+        focusDurationMs: durationMs,
+        remainingMs: durationMs,
+        elapsedFocusMs: 0,
+      })
+    }
+
+    const elapsedMs = Math.max(
+      state.focusDurationMs - state.remainingMs,
+      0,
+    )
+    const adjustedElapsedMs = Math.min(elapsedMs, durationMs - SECOND_MS)
+    return publish({
+      ...state,
+      focusDurationMs: durationMs,
+      remainingMs: durationMs - adjustedElapsedMs,
+      elapsedFocusMs: adjustedElapsedMs,
+      startedAt: Date.now() - adjustedElapsedMs,
     })
   },
   async setBreakDuration(durationMs: number) {

@@ -1,9 +1,9 @@
 # Eye Break
 
 Eye Break is a privacy-first desktop timer that applies the 20-20-20 eye-care
-rule without interrupting focused work. Every 20 minutes it starts an adjustable
-rest period, plays a calm local chime, and can display a dedicated rest screen
-on the main display or every connected display.
+rule without interrupting focused work. After a user-selected focus interval it
+starts an adjustable rest period, plays a calm local chime, and can display a
+dedicated rest screen on the main display or every connected display.
 
 The application is built with React, TypeScript, Vite, and Electron. It works
 offline and stores all timer data locally.
@@ -13,6 +13,7 @@ offline and stores all timer data locally.
 - Start, pause, resume, stop, or trigger a rest immediately
 - Drag the eye-shaped progress control to adjust elapsed or remaining time
 - Optional Auto Mode for continuous focus/rest cycles
+- Adjustable focus interval from 1 to 120 minutes
 - Adjustable rest duration from 5 to 120 seconds
 - Adjustable local chime volume from mute to 100%
 - Total screen-time, eye-rest-time, and completed-rest statistics

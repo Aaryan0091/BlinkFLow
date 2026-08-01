@@ -480,6 +480,7 @@ preference channels are centralized in `APP_IPC_CHANNELS`.
 | `timer:rest-now` | Renderer → main | None | Start the rest phase immediately |
 | `timer:end-break` | Renderer → main | None | End the current rest and close its overlays |
 | `timer:set-remaining` | Renderer → main | Milliseconds | Adjust remaining time |
+| `timer:set-focus-duration` | Renderer → main | Milliseconds | Change the focus interval before a break |
 | `timer:set-break-duration` | Renderer → main | Milliseconds | Change rest duration |
 | `timer:set-auto-mode` | Renderer → main | Boolean | Enable or disable repetition |
 | `timer:set-rest-overlay-mode` | Renderer → main | Display mode | Choose no overlay, primary display, or all displays |
@@ -524,6 +525,7 @@ Its complete public API is:
 | `restNow()` | None | Starts a rest immediately |
 | `endBreak()` | None | Ends the current rest and closes its overlays |
 | `setRemaining(remainingMs)` | Milliseconds | Adjusts the current countdown |
+| `setFocusDuration(durationMs)` | Milliseconds | Changes the configured focus interval from 1 to 120 minutes |
 | `setBreakDuration(durationMs)` | Milliseconds | Changes the configured rest duration |
 | `setAutoMode(enabled)` | Boolean | Enables or disables repeating cycles |
 | `setRestOverlayMode(mode)` | `none`, `primary-display`, or `all-displays` | Changes native overlay placement |
@@ -575,6 +577,11 @@ Mutable arguments are validated at the IPC boundary for type, finite numeric
 value, range, allowed increment, or exact allowed string value. Unexpected
 windows, subframes, untrusted URLs, and malformed payloads are rejected before
 they can reach the timer or startup-preference actions.
+
+Focus-duration changes accept whole-minute values from 1 to 120 minutes. The
+timer preserves elapsed focus time when this preference changes during an
+active or paused session; changing it while idle starts the next session at the
+new full duration.
 
 [`tests/ipc-handlers.test.ts`](../tests/ipc-handlers.test.ts) covers sender
 rejection, malformed timer payloads, invalid display and appearance modes, and
@@ -806,7 +813,7 @@ transitive development dependencies report advisories.
 
 | Test file | Coverage |
 | --- | --- |
-| [`tests/timer-engine.test.ts`](../tests/timer-engine.test.ts) | Timer, Auto Mode, restore, and wake behavior |
+| [`tests/timer-engine.test.ts`](../tests/timer-engine.test.ts) | Timer, configurable focus duration, Auto Mode, restore, and wake behavior |
 | [`tests/ipc-handlers.test.ts`](../tests/ipc-handlers.test.ts) | IPC sender and argument validation |
 | [`tests/security.test.ts`](../tests/security.test.ts) | Trusted renderer URLs and production CSP |
 | [`tests/timer-persistence.test.ts`](../tests/timer-persistence.test.ts) | Atomic save, restore, and corrupted data |

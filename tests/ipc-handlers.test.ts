@@ -36,6 +36,7 @@ function createHarness(isTrusted = true) {
     restNow: vi.fn(() => state),
     endBreak: vi.fn(() => state),
     setRemaining: vi.fn(() => state),
+    setFocusDuration: vi.fn(() => state),
     setBreakDuration: vi.fn(() => state),
     setAutoMode: vi.fn(() => state),
     setRestOverlayMode: vi.fn(() => state),
@@ -53,7 +54,7 @@ describe('timer IPC handlers', () => {
   it('registers every request channel and forwards values to timer actions', () => {
     const { handlers, actions, security, state } = createHarness()
 
-    expect(handlers.size).toBe(12)
+    expect(handlers.size).toBe(13)
     expect(handlers.get(TIMER_IPC_CHANNELS.getState)?.(trustedEvent)).toBe(state)
     expect(handlers.get(TIMER_IPC_CHANNELS.start)?.(trustedEvent)).toBe(state)
     expect(handlers.get(TIMER_IPC_CHANNELS.pause)?.(trustedEvent)).toBe(state)
@@ -63,6 +64,9 @@ describe('timer IPC handlers', () => {
     expect(handlers.get(TIMER_IPC_CHANNELS.endBreak)?.(trustedEvent)).toBe(state)
 
     handlers.get(TIMER_IPC_CHANNELS.setRemaining)?.(trustedEvent, 42_000)
+    handlers
+      .get(TIMER_IPC_CHANNELS.setFocusDuration)
+      ?.(trustedEvent, 45 * 60_000)
     handlers
       .get(TIMER_IPC_CHANNELS.setBreakDuration)
       ?.(trustedEvent, 35_000)
@@ -75,6 +79,7 @@ describe('timer IPC handlers', () => {
       ?.(trustedEvent, 'black-timer')
 
     expect(actions.setRemaining).toHaveBeenCalledWith(42_000)
+    expect(actions.setFocusDuration).toHaveBeenCalledWith(45 * 60_000)
     expect(actions.setBreakDuration).toHaveBeenCalledWith(35_000)
     expect(actions.setAutoMode).toHaveBeenCalledWith(true)
     expect(actions.setRestOverlayMode).toHaveBeenCalledWith(
@@ -85,7 +90,7 @@ describe('timer IPC handlers', () => {
     )
     expect(actions.restNow).toHaveBeenCalledOnce()
     expect(actions.endBreak).toHaveBeenCalledOnce()
-    expect(security.isTrustedSender).toHaveBeenCalledTimes(12)
+    expect(security.isTrustedSender).toHaveBeenCalledTimes(13)
   })
 
   it('blocks every request from an untrusted renderer', () => {
@@ -108,8 +113,13 @@ describe('timer IPC handlers', () => {
     expect(() =>
       handlers
         .get(TIMER_IPC_CHANNELS.setRemaining)
-        ?.(trustedEvent, 20 * 60 * 1_000 + 1),
-    ).toThrow('between 0 and 20 minutes')
+        ?.(trustedEvent, 120 * 60 * 1_000 + 1),
+    ).toThrow('between 0 and 120 minutes')
+    expect(() =>
+      handlers
+        .get(TIMER_IPC_CHANNELS.setFocusDuration)
+        ?.(trustedEvent, 90_000),
+    ).toThrow('whole-minute increment')
     expect(() =>
       handlers
         .get(TIMER_IPC_CHANNELS.setBreakDuration)
@@ -132,6 +142,7 @@ describe('timer IPC handlers', () => {
     ).toThrow('ambient, black, or black-timer')
 
     expect(actions.setRemaining).not.toHaveBeenCalled()
+    expect(actions.setFocusDuration).not.toHaveBeenCalled()
     expect(actions.setBreakDuration).not.toHaveBeenCalled()
     expect(actions.setAutoMode).not.toHaveBeenCalled()
     expect(actions.setRestOverlayMode).not.toHaveBeenCalled()

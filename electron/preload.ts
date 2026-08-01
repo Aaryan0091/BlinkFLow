@@ -11,6 +11,8 @@ const api = {
   endBreak: () => ipcRenderer.invoke(TIMER_IPC_CHANNELS.endBreak),
   setRemaining: (remainingMs: number) =>
     ipcRenderer.invoke(TIMER_IPC_CHANNELS.setRemaining, remainingMs),
+  setFocusDuration: (durationMs: number) =>
+    ipcRenderer.invoke(TIMER_IPC_CHANNELS.setFocusDuration, durationMs),
   setBreakDuration: (durationMs: number) =>
     ipcRenderer.invoke(TIMER_IPC_CHANNELS.setBreakDuration, durationMs),
   setAutoMode: (enabled: boolean) =>
