@@ -40,7 +40,7 @@ const phaseCopy: Record<TimerPhase, { eyebrow: string; title: string; descriptio
   focus: {
     eyebrow: 'Focus window',
     title: 'Time until release.',
-    description: 'Keep your attention where it belongs. Eye Break is running quietly in the tray.',
+    description: 'Keep your attention where it belongs. BlinkFlow is running quietly in the tray.',
   },
   break: {
     eyebrow: 'Distance reset',
@@ -219,8 +219,8 @@ function App() {
         : launchAtLogin.status === 'unsupported'
           ? 'Not supported on this operating system'
           : launchAtLogin.enabled
-            ? 'Eye Break starts when you sign in'
-            : 'Keep Eye Break ready from startup'
+            ? 'BlinkFlow starts when you sign in'
+            : 'Keep BlinkFlow ready from startup'
   const nextBreak = !timer.isRunning
     ? 'After you start'
     : isPaused
@@ -239,7 +239,7 @@ function App() {
           <motion.button
             type="button"
             className="eye-intro"
-            aria-label="Continue to Eye Break"
+            aria-label="Continue to BlinkFlow"
             autoFocus
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -322,7 +322,7 @@ function App() {
         <div className="brand-lockup">
           <span className="brand-mark" aria-hidden="true"><Eye size={21} /></span>
           <div>
-            <strong>Eye Break</strong>
+            <strong>BlinkFlow</strong>
             <span>Ocular reset protocol</span>
           </div>
         </div>
@@ -686,7 +686,7 @@ function App() {
                     )}
                     Rest sounds
                   </label>
-                  <span>Eye Break’s own chimes only</span>
+                  <span>BlinkFlow’s own chimes only</span>
                 </div>
                 <output htmlFor="rest-volume">
                   {restVolume === 0 ? 'Muted' : `${restVolume}%`}
@@ -738,7 +738,7 @@ function App() {
                 role="switch"
                 aria-checked={launchAtLogin.enabled}
                 aria-describedby="launch-at-login-description"
-                aria-label="Launch Eye Break when I sign in"
+                aria-label="Launch BlinkFlow when I sign in"
                 aria-busy={isUpdatingLaunchAtLogin}
                 disabled={!launchAtLogin.supported || isUpdatingLaunchAtLogin}
                 onClick={() => {

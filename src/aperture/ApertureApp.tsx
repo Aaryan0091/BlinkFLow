@@ -177,7 +177,7 @@ export default function ApertureApp() {
               <Eye size={19} />
             </span>
             <span>
-              <strong>Aperture</strong>
+              <strong>BlinkFlow</strong>
               <small>Eye care timer</small>
             </span>
           </div>
@@ -216,7 +216,7 @@ export default function ApertureApp() {
             </h1>
             <p className="aperture-intro">
               Screens lock your focus at a single depth and quietly halve your blink
-              rate. Aperture breaks that loop on your chosen rhythm — briefly,
+              rate. BlinkFlow breaks that loop on your chosen rhythm — briefly,
               calmly, and impossible to overlook.
             </p>
 
@@ -656,13 +656,13 @@ function Preferences({
               }}
               onChange={(event) => onRestVolume(Number(event.target.value))}
             />
-            <small>Controls Eye Break’s own rest and return chimes only.</small>
+            <small>Controls BlinkFlow’s own rest and return chimes only.</small>
           </label>
 
           <h3>The desktop app</h3>
           <Toggle
             label="Launch at login"
-            hint="Keep Aperture ready whenever the laptop starts."
+            hint="Keep BlinkFlow ready whenever the laptop starts."
             checked={launchAtLogin}
             onChange={onLaunchAtLogin}
           />

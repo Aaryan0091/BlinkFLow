@@ -1,9 +1,13 @@
 {
-  "name": "eye-break",
+  "name": "blinkflow",
   "private": true,
   "version": "1.0.0",
   "description": "A calm desktop timer for healthier screen-break habits.",
-  "author": "Eye Break Contributors",
+  "author": {
+    "name": "Aaryan",
+    "email": "aaryangupta2005@gmail.com"
+  },
+  "desktopName": "BlinkFlow",
   "type": "module",
   "main": "dist-electron/main.js",
   "engines": {
@@ -52,8 +56,8 @@
     "vitest": "^4.1.10"
   },
   "build": {
-    "appId": "com.eyebreak.desktop",
-    "productName": "Eye Break",
+    "appId": "com.blinkflow.desktop",
+    "productName": "BlinkFlow",
     "asar": true,
     "afterPack": "build/after-pack.cjs",
     "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
@@ -69,13 +73,14 @@
     ],
     "mac": {
       "category": "public.app-category.productivity",
+      "icon": "build/icon.icns",
       "target": [
         "dmg",
         "zip"
       ]
     },
     "dmg": {
-      "title": "Eye Break ${version}",
+      "title": "BlinkFlow ${version}",
       "backgroundColor": "#071815",
       "iconSize": 96,
       "contents": [
@@ -93,6 +98,7 @@
       ]
     },
     "win": {
+      "icon": "build/icon.ico",
       "target": "nsis"
     },
     "nsis": {
@@ -100,7 +106,12 @@
       "allowToChangeInstallationDirectory": true
     },
     "linux": {
-      "target": "AppImage",
+      "icon": "build/icons",
+      "syncDesktopName": true,
+      "target": [
+        "AppImage",
+        "deb"
+      ],
       "category": "Utility"
     }
   }

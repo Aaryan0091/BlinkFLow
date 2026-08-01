@@ -185,12 +185,12 @@ function updateTrayMenu() {
     ? 'Ready · 20:00'
     : `${isPaused ? 'Paused' : timerState.phase === 'break' ? 'Look away' : 'Focusing'} · ${formatTrayClock(timerState.remainingMs)}`
 
-  tray.setToolTip(`Eye Break — ${status}`)
+  tray.setToolTip(`BlinkFlow — ${status}`)
   tray.setContextMenu(
     Menu.buildFromTemplate([
       { label: status, enabled: false },
       { type: 'separator' },
-      { label: 'Open Eye Break', click: showMainWindow },
+      { label: 'Open BlinkFlow', click: showMainWindow },
       {
         label: isPaused ? 'Resume cycle' : timerState.isRunning ? 'Pause cycle' : 'Start cycle',
         click: () => {
@@ -208,7 +208,7 @@ function updateTrayMenu() {
       },
       { type: 'separator' },
       {
-        label: 'Quit Eye Break',
+        label: 'Quit BlinkFlow',
         click: () => {
           quitRequested = true
           app.quit()

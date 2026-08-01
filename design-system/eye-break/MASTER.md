@@ -1,12 +1,12 @@
-# Eye Break Design System
+# BlinkFlow Design System
 
 This document records the visual rules shared by the current Aperture
-interface, the preserved Eye Break interface, and the native rest overlay.
+interface, the preserved BlinkFlow interface, and the native rest overlay.
 It describes the implemented product rather than a generic UI template.
 
 ## Product character
 
-Eye Break should feel calm, focused, restorative, and trustworthy. It is a
+BlinkFlow should feel calm, focused, restorative, and trustworthy. It is a
 desktop wellness utility, so the interface should remain quiet during focus and
 be unmistakable when a rest begins.
 
@@ -113,7 +113,7 @@ Escape as an immediate exit route.
 ## Asset rules
 
 - Use Lucide for interface icons.
-- Use the Eye Break eye mark for the application, tray, and favicon.
+- Use the BlinkFlow eye mark for the application, tray, and favicon.
 - Do not use emojis as structural icons.
 - Do not add remote fonts, remote images, or visual assets that weaken offline
   operation or the production Content Security Policy.

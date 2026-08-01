@@ -1,6 +1,6 @@
-# Eye Break
+# BlinkFlow
 
-Eye Break is a privacy-first desktop timer that applies the 20-20-20 eye-care
+BlinkFlow is a privacy-first desktop timer that applies the 20-20-20 eye-care
 rule without interrupting focused work. After a user-selected focus interval it
 starts an adjustable rest period, plays a calm local chime, and can display a
 dedicated rest screen on the main display or every connected display.
@@ -52,7 +52,7 @@ The browser preview uses an in-memory timer fallback, so its main timer and
 preferences remain interactive. It does not provide native persistence, tray
 controls, launch at login, or fullscreen multi-display windows.
 
-## Using Eye Break
+## Using BlinkFlow
 
 1. Open the application and choose **Begin session**.
 2. Work until the focus countdown finishes, or press `R` to rest immediately.
@@ -172,7 +172,7 @@ followed by an atomic rename. Invalid snapshots are ignored safely.
 
 Renderer preferences use local storage:
 
-- `eye-break-rest-volume` — Eye Break's own rest and return chime volume
+- `eye-break-rest-volume` — BlinkFlow's own rest and return chime volume
 - `eye-break-rest-seconds` — the rest duration last selected in the interface
 
 The current rest duration is also synchronized into the native timer snapshot;

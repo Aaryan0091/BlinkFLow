@@ -1,6 +1,6 @@
 # Electron Desktop Stack
 
-This document explains how Eye Break turns its React web interface into a native
+This document explains how BlinkFlow turns its React web interface into a native
 desktop application. It covers Electron, Electron Builder, the main process,
 desktop features, IPC, and the current security model.
 
@@ -9,7 +9,7 @@ generic Electron example.
 
 ## Stack overview
 
-| Technology | Responsibility in Eye Break |
+| Technology | Responsibility in BlinkFlow |
 | --- | --- |
 | React | Renders the timer, controls, eye visualization, intro, and break screen |
 | Vite | Builds the React renderer and Electron entry points |
@@ -70,7 +70,7 @@ process and exposed through a narrow preload API.
 combines Chromium and Node.js so a web interface can run inside a desktop
 application while still accessing operating-system features.
 
-Eye Break uses Electron for:
+BlinkFlow uses Electron for:
 
 - Creating the main application window
 - Creating the full-screen break window
@@ -82,7 +82,7 @@ Eye Break uses Electron for:
 
 ### Electron process model
 
-Eye Break has three relevant execution contexts:
+BlinkFlow has three relevant execution contexts:
 
 | Context | File | Access level |
 | --- | --- | --- |
@@ -90,7 +90,7 @@ Eye Break has three relevant execution contexts:
 | Preload isolated world | `electron/preload.ts` | Electron bridge access |
 | Renderer main world | `src/App.tsx` | Browser and React APIs |
 
-Each `BrowserWindow` gets its own renderer process. Eye Break creates one main
+Each `BrowserWindow` gets its own renderer process. BlinkFlow creates one main
 dashboard window and zero or more break windows according to the selected
 display mode. Every window uses the same React build; break windows receive a
 query parameter:
@@ -105,7 +105,7 @@ packaged application, Electron loads the generated `dist/index.html` file.
 
 ### Electron main process
 
-The main process is the native coordinator of Eye Break. It is responsible for
+The main process is the native coordinator of BlinkFlow. It is responsible for
 work that a normal website cannot perform safely or consistently.
 
 The main process:
@@ -197,8 +197,8 @@ The configuration is stored in the `build` property of `package.json`.
 
 | Setting | Current value | Purpose |
 | --- | --- | --- |
-| `appId` | `com.eyebreak.desktop` | Unique application identifier |
-| `productName` | `Eye Break` | User-facing application name |
+| `appId` | `com.blinkflow.desktop` | Unique application identifier |
+| `productName` | `BlinkFlow` | User-facing application name |
 | `asar` | `true` | Packages application files into `app.asar` |
 | `afterPack` | `build/after-pack.cjs` | Locks Electron fuses after packaging |
 | `directories.output` | `release` | Places generated packages in `release/` |
@@ -252,7 +252,7 @@ The current local macOS package is unsigned. Public distribution still requires:
 
 ### Creating Electron windows
 
-Eye Break creates one main `BrowserWindow` and synchronizes break windows with
+BlinkFlow creates one main `BrowserWindow` and synchronizes break windows with
 the selected rest-display mode.
 
 #### Main window
@@ -285,11 +285,11 @@ the timer accessible while the main window is hidden.
 The tray shows:
 
 - Current state and remaining time
-- Open Eye Break
+- Open BlinkFlow
 - Start, Pause, or Resume
 - Stop cycle
 - Auto Mode switch
-- Quit Eye Break
+- Quit BlinkFlow
 
 The tray tooltip and menu are rebuilt whenever timer state changes, so they stay
 synchronized with the React interface.
@@ -304,7 +304,7 @@ macOS and Windows builds, the renderer requests the current operating-system
 setting through validated IPC and Electron's `app.getLoginItemSettings()`.
 Changing the switch calls `app.setLoginItemSettings()` in the main process.
 
-The control is unavailable in development builds so Eye Break never registers
+The control is unavailable in development builds so BlinkFlow never registers
 the Electron development executable as a startup item. On macOS, the interface
 also reports when the login item requires approval in System Settings.
 
@@ -325,7 +325,7 @@ incompatible snapshots safely fall back to default state.
 
 ### Full-screen break overlay
 
-When focus time finishes, Eye Break:
+When focus time finishes, BlinkFlow:
 
 1. Applies the selected rest-display behavior.
 2. Plays the local rest-transition chime at the user's selected volume.
@@ -359,7 +359,7 @@ connected displays remain synchronized.
 
 Ambient mode provides **Extend 20 seconds** and **Skip rest** controls.
 Pitch-black modes intentionally omit visible controls; Escape ends the rest in
-every mode. Pause, Resume, Stop, and Open Eye Break remain available from the
+every mode. Pause, Resume, Stop, and Open BlinkFlow remain available from the
 system tray. All overlays are hidden when the rest ends or the cycle stops.
 
 ### Always-on-top priority
@@ -377,7 +377,7 @@ Electron documents `screen-saver` as a high always-on-top level and permits a
 relative level of one on macOS. `moveTop()` moves the window to the top of the
 native z-order.
 
-Eye Break tracks displays through Electron's `screen` events. During an active
+BlinkFlow tracks displays through Electron's `screen` events. During an active
 break, the overlay set is recalculated from the selected mode whenever a
 display is attached, removed, or changes metrics. One overlay receives keyboard
 focus in all-display mode. Main-display mode does not pull focus back when the
@@ -389,7 +389,7 @@ through the tray.
 
 ### No native notifications
 
-Eye Break intentionally does not use Electron's `Notification` API. Finishing a
+BlinkFlow intentionally does not use Electron's `Notification` API. Finishing a
 focus period is communicated through the selected rest-display behavior and
 the app's local transition chime. The application therefore does not request or
 depend on operating-system notification permission.
@@ -403,7 +403,7 @@ The renderer creates dependency-free Web Audio chimes:
 
 Preferences include a `0–100%` rest-sound slider. The selected level is stored
 locally and applied to both transition chimes. Setting the slider to zero mutes
-Eye Break without changing system volume or controlling another application.
+BlinkFlow without changing system volume or controlling another application.
 
 ### Running while the main window is hidden
 
@@ -424,7 +424,7 @@ action to terminate the application.
 
 ### Single-instance application handling
 
-Eye Break calls `app.requestSingleInstanceLock()`.
+BlinkFlow calls `app.requestSingleInstanceLock()`.
 
 - The first application process receives the lock and continues.
 - A second process fails to receive the lock and quits.
@@ -450,7 +450,7 @@ as the standard way for a renderer to request native work from the main process:
 
 ### Renderer-to-main communication
 
-Eye Break uses Electron's request-and-response pattern:
+BlinkFlow uses Electron's request-and-response pattern:
 
 ```text
 React
@@ -654,7 +654,7 @@ A Content Security Policy restricts the scripts, styles, fonts, images, and
 network origins a renderer may load. It reduces the impact of cross-site
 scripting and content injection.
 
-Eye Break installs a CSP response header before creating renderer windows.
+BlinkFlow installs a CSP response header before creating renderer windows.
 Production uses:
 
 ```text
@@ -739,7 +739,7 @@ windows remain synchronized.
 
 ### No media automation or shell control
 
-Eye Break does not control Spotify, Apple Music, browser playback, or other
+BlinkFlow does not control Spotify, Apple Music, browser playback, or other
 media applications. It does not run AppleScript, `playerctl`, media-key
 commands, or shell commands when a rest starts. Therefore the application does
 not need macOS Automation permission for media control.
