@@ -25,8 +25,8 @@ function getElectronBinaryPath(context) {
   return path.join(context.appOutDir, productFilename)
 }
 
-module.exports = async function lockElectronFuses(context) {
-  await flipFuses(getElectronBinaryPath(context), {
+function createFuseConfig(context) {
+  return {
     version: FuseVersion.V1,
     resetAdHocDarwinSignature: context.electronPlatformName === 'darwin',
     [FuseV1Options.RunAsNode]: false,
@@ -35,8 +35,22 @@ module.exports = async function lockElectronFuses(context) {
     [FuseV1Options.EnableNodeCliInspectArguments]: false,
     [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: true,
     [FuseV1Options.OnlyLoadAppFromAsar]: true,
-    [FuseV1Options.LoadBrowserProcessSpecificV8Snapshot]: true,
-    [FuseV1Options.GrantFileProtocolExtraPrivileges]: false,
+    // This requires a separately generated browser_v8_context_snapshot.bin.
+    // Keep it disabled because BlinkFlow uses Electron's standard snapshot.
+    [FuseV1Options.LoadBrowserProcessSpecificV8Snapshot]: false,
+    // BlinkFlow loads its packaged renderer and assets through file://.
+    // Electron requires these privileges for that renderer architecture.
+    [FuseV1Options.GrantFileProtocolExtraPrivileges]: true,
     [FuseV1Options.WasmTrapHandlers]: true,
-  })
+  }
 }
+
+async function lockElectronFuses(context) {
+  await flipFuses(
+    getElectronBinaryPath(context),
+    createFuseConfig(context),
+  )
+}
+
+module.exports = lockElectronFuses
+module.exports.createFuseConfig = createFuseConfig

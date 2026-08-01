@@ -155,8 +155,9 @@ macOS distribution also requires notarization.
 
 The `afterPack` hook locks Electron fuses in every packaged binary. It disables
 Node runtime switches and inspection arguments, requires the embedded ASAR,
-enables ASAR integrity validation and cookie encryption, and removes extra
-`file://` privileges.
+enables ASAR integrity validation and cookie encryption, and retains the
+`file://` privileges required to load BlinkFlow's packaged renderer and local
+assets.
 
 ## Local data
 

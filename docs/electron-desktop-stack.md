@@ -762,8 +762,12 @@ hook uses the official `@electron/fuses` package to:
 - Enable cookie encryption
 - Validate the embedded ASAR
 - Require application code to load from the ASAR
-- Disable extra `file://` privileges
-- Enable the browser-specific V8 snapshot and WebAssembly trap handlers
+- Retain the `file://` privileges required by BlinkFlow's packaged renderer;
+  disabling this fuse prevents the renderer and its local assets from loading
+- Keep the browser-specific V8 snapshot disabled because BlinkFlow uses
+  Electron's standard snapshot and does not ship a separate
+  `browser_v8_context_snapshot.bin`
+- Enable WebAssembly trap handlers
 
 Fuse locking happens after packaging and before code signing. The macOS hook
 resets the ad-hoc signature after modifying the binary so the final application
