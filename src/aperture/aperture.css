@@ -642,31 +642,74 @@
   line-height: 1.4;
 }
 
-.aperture-duration-input {
-  display: flex;
+.aperture-duration-stepper {
+  display: grid;
   min-height: 44px;
-  padding: 4px 10px 4px 4px;
+  padding: 4px;
   border: 1px solid rgba(168, 245, 233, 0.2);
-  border-radius: 13px;
+  border-radius: 14px;
+  grid-template-columns: 36px 76px 36px;
   align-items: center;
-  gap: 5px;
+  gap: 2px;
   background: rgba(4, 16, 14, 0.75);
-  transition:
-    border-color 180ms ease,
-    box-shadow 180ms ease,
-    background 180ms ease;
 }
 
-.aperture-duration-input:focus-within {
-  border-color: #a8f5e9;
-  background: rgba(168, 245, 233, 0.06);
-  box-shadow: 0 0 0 3px rgba(168, 245, 233, 0.1);
+.aperture-duration-stepper-button {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  color: #a8f5e9;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  place-items: center;
+  background: rgba(168, 245, 233, 0.07);
+  transition:
+    color 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease,
+    transform 120ms ease;
+}
+
+.aperture-duration-stepper-button:hover:not(:disabled) {
+  color: #06110f;
+  border-color: rgba(168, 245, 233, 0.72);
+  background: #a8f5e9;
+}
+
+.aperture-duration-stepper-button:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+.aperture-duration-stepper-button:focus-visible {
+  color: #06110f;
+  outline: none;
+  background: #a8f5e9;
+}
+
+.aperture-duration-stepper-button:disabled {
+  color: #526862;
+  cursor: not-allowed;
+  opacity: 0.46;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.aperture-duration-input {
+  display: grid;
+  min-width: 0;
+  min-height: 34px;
+  padding: 0 7px;
+  border-right: 1px solid rgba(168, 245, 233, 0.11);
+  border-left: 1px solid rgba(168, 245, 233, 0.11);
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px;
 }
 
 .aperture-duration-input input {
-  width: 62px;
+  width: 100%;
   min-height: 34px;
-  padding: 0 5px;
+  padding: 0;
   color: #a8f5e9;
   border: 0;
   outline: 0;
@@ -674,6 +717,13 @@
   font-variant-numeric: tabular-nums;
   text-align: right;
   background: transparent;
+  appearance: textfield;
+}
+
+.aperture-duration-input input::-webkit-inner-spin-button,
+.aperture-duration-input input::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
 }
 
 .aperture-duration-input > span {

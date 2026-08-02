@@ -3,11 +3,13 @@ import {
   Check,
   Eye,
   GalleryHorizontal,
+  Minus,
   Monitor,
   MonitorOff,
   Moon,
   Pause,
   Play,
+  Plus,
   Settings2,
   ShieldCheck,
   Sparkles,
@@ -483,6 +485,25 @@ function Preferences({
     if (nextMinutes !== focusMinutes) onFocusDuration(nextMinutes)
   }
 
+  const adjustFocusDuration = (change: number) => {
+    const parsedMinutes = Number(focusMinutesDraft)
+    const currentMinutes =
+      focusMinutesDraft.trim() && Number.isFinite(parsedMinutes)
+        ? Math.round(parsedMinutes)
+        : focusMinutes
+    const nextMinutes = Math.min(120, Math.max(1, currentMinutes + change))
+
+    replaceFocusValueOnType.current = false
+    setFocusMinutesDraft(String(nextMinutes))
+    if (nextMinutes !== focusMinutes) onFocusDuration(nextMinutes)
+  }
+
+  const displayedFocusMinutes = Number(focusMinutesDraft)
+  const canDecreaseFocus =
+    focusMinutesDraft.trim() !== '' && displayedFocusMinutes > 1
+  const canIncreaseFocus =
+    focusMinutesDraft.trim() !== '' && displayedFocusMinutes < 120
+
   useEffect(() => {
     const close = (event: KeyboardEvent) => event.key === 'Escape' && onClose()
     window.addEventListener('keydown', close)
@@ -529,59 +550,79 @@ function Preferences({
                 The break begins after this much focused screen time.
               </small>
             </label>
-            <div className="aperture-duration-input">
-              <input
-                id="focus-duration-minutes"
-                type="number"
-                inputMode="numeric"
-                min="1"
-                max="120"
-                step="1"
-                value={focusMinutesDraft}
-                aria-describedby="focus-duration-help"
-                onFocus={(event) => {
-                  replaceFocusValueOnType.current = true
-                  event.currentTarget.select()
-                }}
-                onMouseDown={() => {
-                  replaceFocusValueOnType.current = true
-                }}
-                onChange={(event) =>
-                  setFocusMinutesDraft(event.currentTarget.value)
-                }
-                onBlur={commitFocusDuration}
-                onKeyDown={(event) => {
-                  if (
-                    /^\d$/.test(event.key) &&
-                    replaceFocusValueOnType.current &&
-                    !event.metaKey &&
-                    !event.ctrlKey &&
-                    !event.altKey
-                  ) {
-                    event.preventDefault()
-                    replaceFocusValueOnType.current = false
-                    setFocusMinutesDraft(event.key)
-                    return
+            <div className="aperture-duration-stepper">
+              <button
+                type="button"
+                className="aperture-duration-stepper-button"
+                aria-label="Decrease focus interval by one minute"
+                disabled={!canDecreaseFocus}
+                onClick={() => adjustFocusDuration(-1)}
+              >
+                <Minus size={16} strokeWidth={2.2} aria-hidden="true" />
+              </button>
+              <div className="aperture-duration-input">
+                <input
+                  id="focus-duration-minutes"
+                  type="number"
+                  inputMode="numeric"
+                  min="1"
+                  max="120"
+                  step="1"
+                  value={focusMinutesDraft}
+                  aria-describedby="focus-duration-help"
+                  onFocus={(event) => {
+                    replaceFocusValueOnType.current = true
+                    event.currentTarget.select()
+                  }}
+                  onMouseDown={() => {
+                    replaceFocusValueOnType.current = true
+                  }}
+                  onChange={(event) =>
+                    setFocusMinutesDraft(event.currentTarget.value)
                   }
+                  onBlur={commitFocusDuration}
+                  onKeyDown={(event) => {
+                    if (
+                      /^\d$/.test(event.key) &&
+                      replaceFocusValueOnType.current &&
+                      !event.metaKey &&
+                      !event.ctrlKey &&
+                      !event.altKey
+                    ) {
+                      event.preventDefault()
+                      replaceFocusValueOnType.current = false
+                      setFocusMinutesDraft(event.key)
+                      return
+                    }
 
-                  if (
-                    (event.key === 'Backspace' || event.key === 'Delete') &&
-                    replaceFocusValueOnType.current
-                  ) {
-                    event.preventDefault()
-                    replaceFocusValueOnType.current = false
-                    setFocusMinutesDraft('')
-                    return
-                  }
+                    if (
+                      (event.key === 'Backspace' || event.key === 'Delete') &&
+                      replaceFocusValueOnType.current
+                    ) {
+                      event.preventDefault()
+                      replaceFocusValueOnType.current = false
+                      setFocusMinutesDraft('')
+                      return
+                    }
 
-                  replaceFocusValueOnType.current = false
-                  if (event.key === 'Enter') {
-                    event.preventDefault()
-                    event.currentTarget.blur()
-                  }
-                }}
-              />
-              <span>min</span>
+                    replaceFocusValueOnType.current = false
+                    if (event.key === 'Enter') {
+                      event.preventDefault()
+                      event.currentTarget.blur()
+                    }
+                  }}
+                />
+                <span>min</span>
+              </div>
+              <button
+                type="button"
+                className="aperture-duration-stepper-button"
+                aria-label="Increase focus interval by one minute"
+                disabled={!canIncreaseFocus}
+                onClick={() => adjustFocusDuration(1)}
+              >
+                <Plus size={16} strokeWidth={2.2} aria-hidden="true" />
+              </button>
             </div>
           </div>
           <div className="aperture-presets">
