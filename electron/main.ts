@@ -34,6 +34,7 @@ import {
   readTimerSnapshot,
   writeTimerSnapshot,
 } from './timer-persistence.js'
+import { getTrayIconFilename } from './tray-icon.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const isDev = !app.isPackaged
@@ -219,10 +220,16 @@ function updateTrayMenu() {
 }
 
 function createTray() {
-  const iconPath = path.join(__dirname, '../public/tray-icon.png')
-  const icon = nativeImage.createFromPath(iconPath).resize({ width: 18, height: 18 })
+  const iconPath = path.join(
+    __dirname,
+    '../public',
+    getTrayIconFilename(process.platform),
+  )
+  let icon = nativeImage.createFromPath(iconPath)
   if (process.platform === 'darwin') {
     icon.setTemplateImage(true)
+  } else {
+    icon = icon.resize({ width: 18, height: 18 })
   }
   tray = new Tray(icon)
   tray.on('click', showMainWindow)
