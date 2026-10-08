@@ -1,0 +1,105 @@
+name: Package Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  package:
+    name: Package · ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS
+            os: macos-latest
+            command: npx electron-builder --mac dmg zip --arm64
+            artifact: macos
+            paths: |
+              release/*.dmg
+              release/*.zip
+          - name: Windows
+            os: windows-latest
+            command: npx electron-builder --win nsis --x64
+            artifact: windows
+            paths: release/*.exe
+          - name: Linux
+            os: ubuntu-latest
+            command: npx electron-builder --linux AppImage deb --x64
+            artifact: linux
+            paths: |
+              release/*.AppImage
+              release/*.deb
+
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Verify tag matches package version
+        shell: bash
+        run: |
+          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
+          if [ "${GITHUB_REF_NAME}" != "v${PACKAGE_VERSION}" ]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match package version v${PACKAGE_VERSION}."
+            exit 1
+          fi
+
+      - name: Run quality checks
+        run: npm run check
+
+      - name: Run native overlay contract tests
+        run: npm run test:native-overlays
+
+      - name: Package application
+        run: ${{ matrix.command }}
+
+      - name: Upload installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: blinkflow-${{ matrix.artifact }}-${{ github.ref_name }}
+          path: ${{ matrix.paths }}
+          if-no-files-found: error
+          retention-days: 14
+
+  draft-release:
+    name: Create draft release
+    needs: package
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Download packaged installers
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Create draft GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "${GITHUB_REF_NAME}"
+          release-assets/*
+          --verify-tag
+          --draft
+          --generate-notes
+          --title "BlinkFlow ${GITHUB_REF_NAME}"

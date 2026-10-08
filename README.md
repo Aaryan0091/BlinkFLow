@@ -8,6 +8,22 @@ dedicated rest screen on the main display or every connected display.
 The application is built with React, TypeScript, Vite, and Electron. It works
 offline and stores all timer data locally.
 
+## Download BlinkFlow
+
+Installers are published on the repository's
+[Releases page](https://github.com/Aaryan0091/BlinkFLow/releases):
+
+| Platform | Download | Installation |
+| --- | --- | --- |
+| macOS (Apple silicon) | `.dmg` | Open the DMG, drag BlinkFlow to Applications, then right-click BlinkFlow and choose **Open** on first launch. |
+| Windows (64-bit) | `.exe` | Run the installer and follow the setup steps. |
+| Linux (64-bit) | `.AppImage` | Make it executable with `chmod +x BlinkFlow-*.AppImage`, then open it. |
+| Debian/Ubuntu (64-bit) | `.deb` | Run `sudo apt install ./BlinkFlow-*-linux-amd64.deb`. |
+
+Current public builds are unsigned. macOS Gatekeeper or Windows SmartScreen may
+therefore display a warning. Download BlinkFlow only from this repository's
+official Releases page and verify the release notes before opening it.
+
 ## Features
 
 - Start, pause, resume, stop, or trigger a rest immediately
@@ -139,6 +155,10 @@ development-toolchain findings remain visible as a warning because Electron
 Builder currently contains known transitive advisories that do not ship in the
 application.
 
+The [release workflow](.github/workflows/release.yml) runs only for version
+tags such as `v1.0.0`. It packages each supported operating system and creates
+a **draft** GitHub Release so its files can be reviewed before publication.
+
 ## Packaging
 
 Configured outputs:
@@ -203,6 +223,14 @@ reviewed separately because build tools are not included in the packaged app.
   Electron Builder, native features, IPC, persistence, security, fuses, and tests
 - [Design system](design-system/eye-break/MASTER.md) — implemented visual,
   interaction, accessibility, and motion rules
+- [Privacy](docs/privacy.md) — data collection, local storage, permissions, and
+  deletion
+- [Release guide](docs/releasing.md) — versioning, tag creation, installer
+  verification, and publication
+
+## License
+
+BlinkFlow is available under the [MIT License](LICENSE).
 
 ## 21st.dev CLI
 
