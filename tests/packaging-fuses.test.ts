@@ -3,7 +3,10 @@ import { describe, expect, it } from 'vitest'
 
 const require = createRequire(import.meta.url)
 const { FuseV1Options } = require('@electron/fuses')
-const { createFuseConfig } = require('../build/after-pack.cjs')
+const {
+  createFuseConfig,
+  getElectronBinaryPath,
+} = require('../build/after-pack.cjs')
 
 describe('packaged Electron fuses', () => {
   it('uses the standard Electron V8 snapshot', () => {
@@ -18,5 +21,18 @@ describe('packaged Electron fuses', () => {
     const config = createFuseConfig({ electronPlatformName: 'darwin' })
 
     expect(config[FuseV1Options.GrantFileProtocolExtraPrivileges]).toBe(true)
+  })
+
+  it('uses Electron Builder\'s lowercase Linux executable name', () => {
+    const binaryPath = getElectronBinaryPath({
+      appOutDir: '/tmp/blinkflow-package',
+      electronPlatformName: 'linux',
+      packager: {
+        appInfo: { productFilename: 'BlinkFlow' },
+        executableName: 'blinkflow',
+      },
+    })
+
+    expect(binaryPath).toBe('/tmp/blinkflow-package/blinkflow')
   })
 })

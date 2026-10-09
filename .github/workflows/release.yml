@@ -23,19 +23,19 @@ jobs:
         include:
           - name: macOS
             os: macos-latest
-            command: npx electron-builder --mac dmg zip --arm64
+            command: npx electron-builder --mac dmg zip --arm64 --publish never
             artifact: macos
             paths: |
               release/*.dmg
               release/*.zip
           - name: Windows
             os: windows-latest
-            command: npx electron-builder --win nsis --x64
+            command: npx electron-builder --win nsis --x64 --publish never
             artifact: windows
             paths: release/*.exe
           - name: Linux
             os: ubuntu-latest
-            command: npx electron-builder --linux AppImage deb --x64
+            command: npx electron-builder --linux AppImage deb --x64 --publish never
             artifact: linux
             paths: |
               release/*.AppImage

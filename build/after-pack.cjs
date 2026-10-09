@@ -22,7 +22,7 @@ function getElectronBinaryPath(context) {
     return path.join(context.appOutDir, `${productFilename}.exe`)
   }
 
-  return path.join(context.appOutDir, productFilename)
+  return path.join(context.appOutDir, context.packager.executableName)
 }
 
 function createFuseConfig(context) {
@@ -54,3 +54,4 @@ async function lockElectronFuses(context) {
 
 module.exports = lockElectronFuses
 module.exports.createFuseConfig = createFuseConfig
+module.exports.getElectronBinaryPath = getElectronBinaryPath
