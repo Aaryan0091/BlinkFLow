@@ -1,4 +1,5 @@
 import { createRequire } from 'node:module'
+import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const require = createRequire(import.meta.url)
@@ -33,6 +34,8 @@ describe('packaged Electron fuses', () => {
       },
     })
 
-    expect(binaryPath).toBe('/tmp/blinkflow-package/blinkflow')
+    expect(binaryPath).toBe(
+      path.join('/tmp/blinkflow-package', 'blinkflow'),
+    )
   })
 })

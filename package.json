@@ -1,7 +1,7 @@
 {
   "name": "blinkflow",
   "private": true,
-  "version": "1.0.1",
+  "version": "1.0.2",
   "license": "MIT",
   "description": "A calm desktop timer for healthier screen-break habits.",
   "author": {
@@ -48,13 +48,13 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",
-    "electron": "^43.2.0",
-    "electron-builder": "^26.15.3",
+    "electron": "^43.7.9",
+    "electron-builder": "^26.17.0",
     "oxlint": "^1.71.0",
     "typescript": "~6.0.2",
     "vite": "^8.1.1",
     "vite-plugin-electron": "^1.1.0",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   },
   "build": {
     "appId": "com.blinkflow.desktop",
