@@ -1,7 +1,7 @@
 {
   "name": "blinkflow",
   "private": true,
-  "version": "1.0.2",
+  "version": "1.0.3",
   "license": "MIT",
   "description": "A calm desktop timer for healthier screen-break habits.",
   "author": {

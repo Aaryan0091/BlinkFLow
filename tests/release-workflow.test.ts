@@ -22,4 +22,8 @@ describe('release workflow', () => {
   it('creates a draft release for manual review', () => {
     expect(workflow).toContain('--draft')
   })
+
+  it('targets the repository explicitly without requiring a checkout', () => {
+    expect(workflow).toContain('--repo "${GITHUB_REPOSITORY}"')
+  })
 })
